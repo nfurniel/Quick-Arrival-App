@@ -9,29 +9,28 @@ export default function Header() {
       textColor: "#1E293B",
       accentColor: "#DC2626",
       links: [
-        { label: "Company", ariaLabel: "About Company" },
-        { label: "Careers", ariaLabel: "About Careers" },
+        { label: "About us", ariaLabel: "About us" },
+        { label: "How it works", ariaLabel: "How it works" },
       ],
     },
     {
-      label: "Projects",
+      label: "Map",
       bgColor: "#F8FAFC",
       textColor: "#1E293B",
       accentColor: "#DC2626",
       links: [
-        { label: "Featured", ariaLabel: "Featured Projects" },
-        { label: "Case Studies", ariaLabel: "Project Case Studies" },
+        { label: "Bus Stops", ariaLabel: "Bus Stops" },
+        { label: "Routes", ariaLabel: "Routes" },
       ],
     },
     {
-      label: "Contact",
+      label: "Support",
       bgColor: "#FFFFFF",
       textColor: "#1E293B",
       accentColor: "#DC2626",
       links: [
-        { label: "Email", ariaLabel: "Email us" },
-        { label: "Twitter", ariaLabel: "Twitter" },
-        { label: "LinkedIn", ariaLabel: "LinkedIn" },
+        { label: "FAQ", ariaLabel: "FAQ" },
+        { label: "Contact", ariaLabel: "Contact" },
       ],
     },
   ];

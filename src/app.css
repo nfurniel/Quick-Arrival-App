@@ -1,10 +1,12 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Questrial&display=swap');
 
-:root { 
-   --font-family:"Questrial", sans-serif;
-   --bg-base-color: #fff;
+:root {
+    --font-family: "Questrial", sans-serif;
+    --bg-base-color: #fff;
+    --bg-secondary-color: #fb2049;
 }
-* { 
+
+* {
     margin: 0;
     padding: 0;
     box-sizing: border-box;

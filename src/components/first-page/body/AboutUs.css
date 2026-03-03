@@ -1,0 +1,43 @@
+.about-us-container {
+    color: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    max-width: 70%;
+    width: 60%;
+    min-height: 50vh;
+    border-radius: 20px;
+    background-color: var(--bg-secondary-color);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 2rem;
+    text-align: center;
+
+    h1 {
+        font-size: 9rem;
+        line-height: 1.1;
+        margin-bottom: 1rem;
+    }
+
+    p {
+        font-size: 3rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    @media (max-width: 768px) {
+        width: 90%;
+        max-width: 95%;
+        padding: 3rem 1.5rem;
+
+        h1 {
+            font-size: 3.5rem;
+        }
+
+        p {
+            font-size: 1.2rem;
+        }
+    }
+}
