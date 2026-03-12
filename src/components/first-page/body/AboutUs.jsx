@@ -8,9 +8,9 @@ export default function AboutUs() {
                 <div className="about-us-text">
                     <h1>Quick Arrival</h1>
                     <p>
-                        We are
+                        Somos
                         <RotatingText
-                            texts={['precise.', 'puntual.', 'friendly.', 'reliable.', 'fast.']}
+                            texts={['precisos.', 'puntuales.', 'rápidos.', 'fiables.', 'colaborativos.']}
                             mainClassName="reactbits-rotating-badge"
                             staggerFrom="first"
                             initial={{ y: "100%" }}

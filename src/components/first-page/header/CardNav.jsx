@@ -60,7 +60,7 @@ const CardNav = ({
     const navEl = navRef.current;
     if (!navEl) return null;
 
-    gsap.set(navEl, { height: 60, overflow: "hidden" });
+    gsap.set(navEl, { height: 85, overflow: "hidden" });
     gsap.set(cardsRef.current, { y: 50, opacity: 0 });
 
     const tl = gsap.timeline({ paused: true });
@@ -177,8 +177,8 @@ const CardNav = ({
               key={`${item.label}-${idx}`}
               className="nav-card"
               ref={setCardRef(idx)}
-              style={{ 
-                backgroundColor: item.bgColor, 
+              style={{
+                backgroundColor: item.bgColor,
                 color: item.textColor,
                 '--accent-color': item.accentColor || '#DC2626'
               }}

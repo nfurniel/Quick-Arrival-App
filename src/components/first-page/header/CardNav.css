@@ -1,17 +1,17 @@
 .card-nav-container {
   position: absolute;
-  top: 2em;
+  top: 4rem;
   left: 50%;
   transform: translateX(-50%);
-  width: 90%;
-  max-width: 1200px;
+  width: 95%;
+  max-width: 1400px;
   z-index: 99;
   box-sizing: border-box;
 }
 
 .card-nav {
   display: block;
-  height: 60px;
+  height: 85px;
   padding: 0;
   background-color: white;
   border: 0.5px solid rgba(255, 255, 255, 0.1);
@@ -27,7 +27,7 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 60px;
+  height: 85px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -129,7 +129,7 @@
   position: absolute;
   left: 0;
   right: 0;
-  top: 60px;
+  top: 85px;
   bottom: 0;
   padding: 0.5rem;
   display: flex;

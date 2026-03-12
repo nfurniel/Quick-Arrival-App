@@ -2,7 +2,6 @@
     display: flex;
     white-space: pre;
     position: relative;
-    /* Prevent wrapping so the letters don't jump on narrow screens */
     flex-wrap: nowrap;
     align-items: center;
 }
@@ -34,7 +33,6 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    /* Basic alignment fix so characters don't jitter vertically */
     line-height: 1;
 }
 
@@ -42,20 +40,13 @@
     white-space: pre;
 }
 
-/* Replicating ReactBits Tailwind Classes for RotatingText */
 .reactbits-rotating-badge {
     padding: 0.25rem 0.5rem;
-    /* py-1 px-2 roughly */
     background-color: #ffffff;
-    /* bg-cyan-300 */
     color: #000;
-    /* text-black */
     border-radius: 0.5rem;
-    /* rounded-lg */
     overflow: hidden;
-    /* overflow-hidden */
     justify-content: center;
-    /* justify-center */
     display: inline-flex;
     font-size: 2rem;
     font-weight: bold;
@@ -64,14 +55,11 @@
 @media (min-width: 640px) {
     .reactbits-rotating-badge {
         padding: 0.5rem 0.75rem;
-        /* sm:py-2 sm:px-3 */
         font-size: 2.5rem;
     }
 }
 
 .reactbits-split-level {
     overflow: hidden;
-    /* overflow-hidden */
     padding-bottom: 0.25rem;
-    /* pb-1 */
 }
