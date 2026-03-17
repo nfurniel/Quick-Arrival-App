@@ -210,20 +210,30 @@
   .card-nav-top {
     padding: 0.5rem 1rem;
     justify-content: space-between;
+    gap: 10px;
   }
 
-  .hamburger-menu {
-    order: 2;
+  .card-nav-cta-button {
+    display: flex;
+    margin: 0;
+    padding: 0 0.8rem;
+    font-size: 0.9rem;
+    height: 80%;
+    order: 1;
+    flex-shrink: 0;
   }
 
   .logo-container {
     position: static;
     transform: none;
-    order: 1;
+    order: 2;
+    flex: 1;
+    justify-content: center;
   }
 
-  .card-nav-cta-button {
-    display: none;
+  .hamburger-menu {
+    order: 3;
+    flex-shrink: 0;
   }
 
   .card-nav-content {
