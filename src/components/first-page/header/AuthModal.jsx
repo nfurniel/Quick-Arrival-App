@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "../../../supabaseClient.js";
+import { useNavigate } from "react-router-dom";
 import "./AuthModal.css";
 
 export default function AuthModal({ isOpen, onClose }) {
@@ -12,6 +13,8 @@ export default function AuthModal({ isOpen, onClose }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  
+  const navigate = useNavigate();
 
   if (!isOpen) return null;
 
@@ -41,8 +44,9 @@ export default function AuthModal({ isOpen, onClose }) {
         if (signInError) {
           setError(signInError.message);
         } else {
-          // Si el login es exitoso, cerramos el modal
+          // Si el login es exitoso, cerramos el modal y redirigimos
           handleClose();
+          navigate("/mapa");
         }
       } else {
         // Registro

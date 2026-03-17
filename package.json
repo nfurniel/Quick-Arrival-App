@@ -13,11 +13,14 @@
     "@react-three/fiber": "^9.5.0",
     "@supabase/supabase-js": "^2.99.1",
     "gsap": "^3.14.2",
+    "leaflet": "^1.9.4",
     "mathjs": "^15.1.1",
     "motion": "^12.34.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-icons": "^5.5.0",
+    "react-leaflet": "^5.0.0",
+    "react-router-dom": "^7.13.1",
     "three": "^0.183.2"
   },
   "devDependencies": {

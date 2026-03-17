@@ -22,11 +22,3 @@ const SpotlightCard = ({ children, className = '', spotlightColor = 'rgba(255, 2
 };
 
 export default SpotlightCard;
-
-
-// Usage : 
-// import SpotlightCard from './SpotlightCard';
-  
-// <SpotlightCard className="custom-spotlight-card" spotlightColor="rgba(0, 229, 255, 0.2)">
-//   // Content goes here
-// </SpotlightCard>
