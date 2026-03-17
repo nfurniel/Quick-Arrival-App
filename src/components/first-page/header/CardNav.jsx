@@ -14,6 +14,7 @@ const CardNav = ({
   menuColor,
   buttonBgColor,
   buttonTextColor,
+  onCtaClick,
 }) => {
   const [isHamburgerOpen, setIsHamburgerOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -60,7 +61,7 @@ const CardNav = ({
     const navEl = navRef.current;
     if (!navEl) return null;
 
-    gsap.set(navEl, { height: 60, overflow: "hidden" });
+    gsap.set(navEl, { height: 85, overflow: "hidden" });
     gsap.set(cardsRef.current, { y: 50, opacity: 0 });
 
     const tl = gsap.timeline({ paused: true });
@@ -166,8 +167,9 @@ const CardNav = ({
             type="button"
             className="card-nav-cta-button"
             style={{ backgroundColor: buttonBgColor, color: buttonTextColor }}
+            onClick={onCtaClick}
           >
-            Get Started
+            Empezar
           </button>
         </div>
 
@@ -177,8 +179,8 @@ const CardNav = ({
               key={`${item.label}-${idx}`}
               className="nav-card"
               ref={setCardRef(idx)}
-              style={{ 
-                backgroundColor: item.bgColor, 
+              style={{
+                backgroundColor: item.bgColor,
                 color: item.textColor,
                 '--accent-color': item.accentColor || '#DC2626'
               }}
@@ -189,8 +191,24 @@ const CardNav = ({
                   <a
                     key={`${lnk.label}-${i}`}
                     className="nav-card-link"
-                    href={lnk.href}
+                    href={lnk.href || "#"}
                     aria-label={lnk.ariaLabel}
+                    onClick={(e) => {
+                      if (lnk.href && lnk.href.startsWith("#")) {
+                        e.preventDefault();
+                        const target = document.querySelector(lnk.href);
+                        if (target) {
+                          target.scrollIntoView({ behavior: "smooth" });
+                          // Close the menu after clicking
+                          setIsHamburgerOpen(false);
+                          const tl = tlRef.current;
+                          if (tl) {
+                            tl.eventCallback("onReverseComplete", () => setIsExpanded(false));
+                            tl.reverse();
+                          }
+                        }
+                      }
+                    }}
                   >
                     <GoArrowUpRight
                       className="nav-card-link-icon"
