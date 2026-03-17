@@ -354,14 +354,14 @@ export default function MapPage() {
 
 // Sub-componente para seguimiento en vivo
 function LiveBusLayer({ selectedBus }) {
-  const [busLocation, setBusLocation] = useState(null);
+  const [busLocations, setBusLocations] = useState([]);
   const map = useMap();
   const hasCentered = useRef(false);
 
   useEffect(() => {
     // Resetear el flag de centrado si cambiamos de bus
     hasCentered.current = false;
-    setBusLocation(null);
+    setBusLocations([]);
   }, [selectedBus]);
 
   useEffect(() => {
@@ -380,20 +380,20 @@ function LiveBusLayer({ selectedBus }) {
         );
 
         if (locations && locations.length > 0 && isMounted) {
-          // Tomar el primer bus encontrado para simplificar
-          const loc = locations[0]; 
-          const newLoc = [loc.latitude, loc.longitude];
-          setBusLocation(newLoc);
+          // Guardar todos los buses encontrados
+          setBusLocations(locations);
           
           if (!hasCentered.current) {
             hasCentered.current = true;
-            // Usamos setTimeout para asegurar que el marcador ya esté en el DOM y quede limpio
             setTimeout(() => {
-              if (isMounted) map.flyTo(newLoc, map.getZoom(), { animate: true, duration: 1.5 });
+              if (isMounted) {
+                // Centramos en el primer bus
+                map.flyTo([locations[0].latitude, locations[0].longitude], map.getZoom(), { animate: true, duration: 1.5 });
+              }
             }, 100);
           }
         } else if (isMounted) {
-          setBusLocation(null);
+          setBusLocations([]);
         }
       } catch (e) {
         console.error("Error fetching live bus:", e);
@@ -410,17 +410,26 @@ function LiveBusLayer({ selectedBus }) {
       isMounted = false;
       clearInterval(intervalId);
     };
-  }, [selectedBus]);
+  }, [selectedBus, map]);
 
-  if (!busLocation) return null;
+  if (busLocations.length === 0) return null;
 
   return (
-    <Marker position={busLocation} icon={liveBusIcon} zIndexOffset={1000}>
-      <Popup>
-        <strong>Línea {selectedBus.line} (En movimiento)</strong>
-        <br/>
-        Destino: {selectedBus.destination}
-      </Popup>
-    </Marker>
+    <>
+      {busLocations.map((loc, idx) => (
+        <Marker 
+          key={loc.vehicleId || idx} 
+          position={[loc.latitude, loc.longitude]} 
+          icon={liveBusIcon} 
+          zIndexOffset={1000}
+        >
+          <Popup>
+            <strong>Línea {selectedBus.line} (En movimiento)</strong>
+            <br/>
+            Destino: {selectedBus.destination}
+          </Popup>
+        </Marker>
+      ))}
+    </>
   );
 }
