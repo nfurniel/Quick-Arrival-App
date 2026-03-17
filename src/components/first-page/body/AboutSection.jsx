@@ -2,7 +2,7 @@ import "./AboutSection.css";
 
 export default function AboutSection() {
     return (
-        <section className="about-hero-container">
+        <section id="sobre-nosotros" className="about-hero-container">
             <div className="about-hero-content">
                 <div className="about-hero-text">
                     <h2>El fin de las esperas a ciegas.</h2>

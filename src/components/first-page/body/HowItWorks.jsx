@@ -2,7 +2,7 @@ import "./HowItWorks.css";
 
 export default function HowItWorks() {
     return (
-        <section className="how-it-works-container">
+        <section id="como-funciona" className="how-it-works-container">
             <h2 className="how-title">¿Cómo funciona Quick Arrival?</h2>
             <div className="how-steps">
                 <div className="how-step">

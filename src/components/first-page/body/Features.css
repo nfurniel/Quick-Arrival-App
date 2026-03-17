@@ -36,8 +36,8 @@
             }
 
             .feature-icon {
-                width: 80px;
-                height: 80px;
+                width: 200px;
+                height: 200px;
                 margin: 0 auto 2rem auto;
                 border-radius: 20px;
                 object-fit: cover;
