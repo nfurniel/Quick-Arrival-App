@@ -1,36 +1,40 @@
 import { useState, useEffect } from 'react';
+import { Routes, Route, useNavigate } from 'react-router-dom';
 import FirstPage from "./components/first-page/FirstPage.jsx"
 import ResetPasswordModal from "./components/first-page/header/ResetPasswordModal.jsx"
+import MapPage from "./components/map-page/MapPage.jsx"
 import { supabase } from "./supabaseClient.js"
 import './app.css'
 
 function App() {
   const [showResetPassword, setShowResetPassword] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    // Escuchar cambios de estado de autenticación de Supabase
-    // Cuando el usuario hace clic en el enlace del correo, Supabase procesa el token
-    // en la URL (hash) y si es un token de recuperación de contraseña (type=recovery), 
-    // emitirá el evento 'PASSWORD_RECOVERY'.
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      // Abre el modal de reset password sî el usuario viene del email de recuperación
       if (event === 'PASSWORD_RECOVERY') {
         setShowResetPassword(true);
       }
+      // Cuando el usuario confirma el email o inicia sesión de alguna forma global
+      if (event === 'SIGNED_IN') {
+        navigate('/mapa');
+      }
     });
 
-    // Limpieza
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, []);
+  }, [navigate]);
 
   return (
     <>
-      <FirstPage />
-      <ResetPasswordModal 
-        isOpen={showResetPassword} 
-        onClose={() => setShowResetPassword(false)} 
+      <Routes>
+        <Route path="/" element={<FirstPage />} />
+        <Route path="/mapa" element={<MapPage />} />
+      </Routes>
+      <ResetPasswordModal
+        isOpen={showResetPassword}
+        onClose={() => setShowResetPassword(false)}
       />
     </>
   )
