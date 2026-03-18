@@ -150,7 +150,7 @@ function BusStopsLayer({ isDarkMode, onSelectBus, selectedBus }) {
         const stopName = props.DENOMINACION || 'Parada';
         const linesStr = props.LINEAS || '';
         const lines = linesStr ? linesStr.split(',').map(l => l.trim()) : [];
-        const stopType = feature._type === 'interurbano' ? '🚌 Interurbano' : '🚍 Urbano';
+        const stopType = feature._type === 'interurbano' ? 'Interurbano' : 'Urbano';
         const codMode = feature._type === 'interurbano' ? '8' : '6';
         const codStop = `${codMode}_${props.CODIGOESTACION}`;
 
@@ -253,7 +253,7 @@ function BusStopPopup({ stopName, stopType, lines, codStop, onSelectBus }) {
       )}
 
       <div className="bus-arrivals-section">
-        <span className="bus-arrivals-title">⏱️ Próximos buses:</span>
+        <span className="bus-arrivals-title">Próximos buses:</span>
         {loadingTimes && (
           <div className="bus-arrivals-loading">Cargando...</div>
         )}
@@ -271,7 +271,7 @@ function BusStopPopup({ stopName, stopType, lines, codStop, onSelectBus }) {
                 <span className="bus-arrival-line">{a.line}</span>
                 <span className="bus-arrival-dest">{a.destination}</span>
                 <span className="bus-arrival-time">
-                  {a.minutes === 0 ? '🟢 YA' : `${a.minutes} min`}
+                  {a.minutes === 0 ? 'YA' : `${a.minutes} min`}
                 </span>
               </div>
             ))}
