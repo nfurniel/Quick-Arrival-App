@@ -16,7 +16,29 @@ export default defineConfig({
         target: 'https://www.crtm.es',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/crtm/, ''),
-        secure: true,
+        secure: false,
+        timeout: 30000,
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq, req) => {
+            console.log('[CRTM Proxy] → ', req.url);
+            // Sobreescribir Origin y Referer
+            proxyReq.setHeader('origin', 'https://www.crtm.es');
+            proxyReq.setHeader('referer', 'https://www.crtm.es/');
+            proxyReq.setHeader('accept', '*/*');
+            // Eliminar cabeceras de seguridad de Chrome que CRTM rechaza
+            proxyReq.removeHeader('sec-fetch-mode');
+            proxyReq.removeHeader('sec-fetch-site');
+            proxyReq.removeHeader('sec-fetch-dest');
+            proxyReq.removeHeader('sec-fetch-user');
+            proxyReq.removeHeader('sec-ch-ua');
+            proxyReq.removeHeader('sec-ch-ua-mobile');
+            proxyReq.removeHeader('sec-ch-ua-platform');
+            proxyReq.removeHeader('upgrade-insecure-requests');
+          });
+          proxy.on('proxyRes', (proxyRes, req) => {
+            console.log('[CRTM Proxy] ← ', proxyRes.statusCode, req.url);
+          });
+        },
       },
     },
   },

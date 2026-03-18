@@ -82,8 +82,8 @@ function LocateControl({ position }) {
   return (
     <div className="leaflet-bottom leaflet-right" style={{ marginBottom: '90px', marginRight: '10px' }}>
       <div className="leaflet-control">
-        <button 
-          className="locate-me-btn" 
+        <button
+          className="locate-me-btn"
           onClick={(e) => {
             e.stopPropagation();
             map.flyTo(position, 17, { animate: true, duration: 1 });
@@ -158,20 +158,54 @@ function BusStopsLayer({ isDarkMode, onSelectBus, selectedBus }) {
         const currentIcon = isActive ? activeBusStopIcon : busStopIcon;
 
         return (
-          <Marker key={props.CODIGOESTACION || `crtm-${index}`} position={position} icon={currentIcon} zIndexOffset={isActive ? 500 : 0}>
-            <Popup className={`bus-stop-popup ${isDarkMode ? 'dark-popup' : ''}`} minWidth={220} maxWidth={280}>
-              <BusStopPopup
-                stopName={stopName}
-                stopType={stopType}
-                lines={lines}
-                codStop={codStop}
-                onSelectBus={onSelectBus}
-              />
-            </Popup>
-          </Marker>
+          <StopMarker
+            key={props.CODIGOESTACION || `crtm-${index}`}
+            position={position}
+            icon={currentIcon}
+            isActive={isActive}
+            isDarkMode={isDarkMode}
+            stopName={stopName}
+            stopType={stopType}
+            lines={lines}
+            codStop={codStop}
+            onSelectBus={onSelectBus}
+          />
         );
       })}
     </>
+  );
+}
+
+// Sub-componente para gestionar el estado Abierto/Cerrado del marcador
+function StopMarker({ position, icon, isActive, isDarkMode, stopName, stopType, lines, codStop, onSelectBus }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <Marker
+      position={position}
+      icon={icon}
+      zIndexOffset={isActive ? 500 : 0}
+      eventHandlers={{
+        click: () => setIsOpen(true),
+        popupclose: () => setIsOpen(false)
+      }}
+    >
+      <Popup className={`bus-stop-popup ${isDarkMode ? 'dark-popup' : ''}`} minWidth={220} maxWidth={280}>
+        {isOpen ? (
+          <BusStopPopup
+            stopName={stopName}
+            stopType={stopType}
+            lines={lines}
+            codStop={codStop}
+            onSelectBus={onSelectBus}
+          />
+        ) : (
+          <div className="bus-popup-content" style={{ padding: '10px', textAlign: 'center' }}>
+            <div className="bus-arrivals-loading">Cargando datos...</div>
+          </div>
+        )}
+      </Popup>
+    </Marker>
   );
 }
 
@@ -179,26 +213,30 @@ function BusStopsLayer({ isDarkMode, onSelectBus, selectedBus }) {
 function BusStopPopup({ stopName, stopType, lines, codStop, onSelectBus }) {
   const [arrivals, setArrivals] = useState(null);
   const [loadingTimes, setLoadingTimes] = useState(false);
-  const hasFetched = useRef(false);
-
-  // Cargar tiempos cuando el popup se monta (se abre)
+  // Cargar tiempos cuando el componente se monta (es decir, el usuario abre el popup)
   useEffect(() => {
-    if (hasFetched.current) return;
-    hasFetched.current = true;
+    const abortController = new AbortController();
 
     async function fetchTimes() {
       setLoadingTimes(true);
       try {
-        const times = await getStopTimes(codStop);
-        setArrivals(times);
+        const times = await getStopTimes(codStop, abortController.signal);
+        if (!abortController.signal.aborted) setArrivals(times);
       } catch (e) {
+        if (e.name === 'AbortError') return; // Petición cancelada al cerrar popup, ignorar
         console.error('Error fetching stop times:', e);
-        setArrivals([]);
+        if (!abortController.signal.aborted) setArrivals([]);
       } finally {
-        setLoadingTimes(false);
+        if (!abortController.signal.aborted) setLoadingTimes(false);
       }
     }
+
     fetchTimes();
+
+    return () => {
+      // Cancelar la petición HTTP al cerrar el popup
+      abortController.abort();
+    };
   }, [codStop]);
 
   return (
@@ -225,8 +263,8 @@ function BusStopPopup({ stopName, stopType, lines, codStop, onSelectBus }) {
         {arrivals && arrivals.length > 0 && (
           <div className="bus-arrivals-list">
             {arrivals.map((a, i) => (
-              <div 
-                key={i} 
+              <div
+                key={i}
                 className="bus-arrival-row clickable-arrival"
                 onClick={() => onSelectBus({ ...a, codStop, stopName })}
               >
@@ -382,7 +420,7 @@ function LiveBusLayer({ selectedBus }) {
         if (locations && locations.length > 0 && isMounted) {
           // Guardar todos los buses encontrados
           setBusLocations(locations);
-          
+
           if (!hasCentered.current) {
             hasCentered.current = true;
             setTimeout(() => {
@@ -392,9 +430,8 @@ function LiveBusLayer({ selectedBus }) {
               }
             }, 100);
           }
-        } else if (isMounted) {
-          setBusLocations([]);
         }
+        // Si locations está vacío, NO borramos las anteriores (mantenemos última posición conocida)
       } catch (e) {
         console.error("Error fetching live bus:", e);
       }
@@ -402,7 +439,7 @@ function LiveBusLayer({ selectedBus }) {
 
     // Petición inmediata
     fetchLocation();
-    
+
     // Polling cada 12 segundos para no saturar la API
     intervalId = setInterval(fetchLocation, 12000);
 
@@ -417,15 +454,15 @@ function LiveBusLayer({ selectedBus }) {
   return (
     <>
       {busLocations.map((loc, idx) => (
-        <Marker 
-          key={loc.vehicleId || idx} 
-          position={[loc.latitude, loc.longitude]} 
-          icon={liveBusIcon} 
+        <Marker
+          key={loc.vehicleId || idx}
+          position={[loc.latitude, loc.longitude]}
+          icon={liveBusIcon}
           zIndexOffset={1000}
         >
           <Popup>
             <strong>Línea {selectedBus.line} (En movimiento)</strong>
-            <br/>
+            <br />
             Destino: {selectedBus.destination}
           </Popup>
         </Marker>

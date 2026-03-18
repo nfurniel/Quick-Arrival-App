@@ -72,15 +72,24 @@ const CRTM_WIDGETS_BASE = '/api/crtm/widgets/api';
 /**
  * Obtiene los tiempos de llegada en tiempo real para una parada.
  * @param {string} codStop - Código de parada (ej: "8_06032" para interurbano, "6_1234" para EMT)
+ * @param {AbortSignal} [signal] - Señal para cancelar la petición si el popup se cierra
+ * @param {number} [retries=2] - Número de reintentos si el servidor falla
  * @returns {Array} Array de llegadas con línea, destino y minutos restantes
  */
-export async function getStopTimes(codStop) {
+export async function getStopTimes(codStop, signal, retries = 2) {
   try {
-    const url = `${CRTM_WIDGETS_BASE}/GetStopsTimes.php?codStop=${codStop}&type=0&orderBy=2&stopTimesByIti=${codStop}`;
-    const response = await fetch(url);
+    const cacheBust = Date.now();
+    const url = `${CRTM_WIDGETS_BASE}/GetStopsTimes.php?codStop=${codStop}&type=0&orderBy=2&stopTimesByIti=${codStop}&_=${cacheBust}`;
+    const response = await fetch(url, { cache: 'no-store', signal });
 
     if (!response.ok) {
       console.warn(`CRTM StopTimes: ${response.status} para ${codStop}`);
+      // Reintentar si el CRTM devuelve 500/504 (servidor inestable)
+      if ((response.status >= 500) && retries > 0) {
+        console.log(`CRTM: Reintentando en 3s... (${retries} intentos restantes)`);
+        await new Promise(r => setTimeout(r, 3000));
+        return getStopTimes(codStop, signal, retries - 1);
+      }
       return [];
     }
 
@@ -125,13 +134,19 @@ export async function getStopTimes(codStop) {
  * @param {string} codStop - Código de la parada origen
  * @returns {Array} Array de ubicaciones con latitud y longitud
  */
-export async function getBusLocation(mode, codLine, direction, codStop) {
+export async function getBusLocation(mode, codLine, direction, codStop, retries = 2) {
   try {
-    const url = `${CRTM_WIDGETS_BASE}/GetLineLocation.php?mode=${mode}&codLine=${codLine}&codStop=${codStop}&direction=${direction}&codItinerary=`;
-    const response = await fetch(url);
+    const cacheBust = Date.now();
+    const url = `${CRTM_WIDGETS_BASE}/GetLineLocation.php?mode=${mode}&codLine=${codLine}&codStop=${codStop}&direction=${direction}&codItinerary=&_=${cacheBust}`;
+    const response = await fetch(url, { cache: 'no-store' });
 
     if (!response.ok) {
       console.warn(`CRTM LineLocation: ${response.status} para línea ${codLine}`);
+      if (response.status >= 500 && retries > 0) {
+        console.log(`CRTM Location: Reintentando en 3s... (${retries} intentos restantes)`);
+        await new Promise(r => setTimeout(r, 3000));
+        return getBusLocation(mode, codLine, direction, codStop, retries - 1);
+      }
       return [];
     }
 
