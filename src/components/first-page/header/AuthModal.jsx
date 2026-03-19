@@ -13,7 +13,7 @@ export default function AuthModal({ isOpen, onClose }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
-  
+
   const navigate = useNavigate();
 
   if (!isOpen) return null;

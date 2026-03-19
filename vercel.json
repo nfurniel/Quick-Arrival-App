@@ -6,7 +6,7 @@
     },
     {
       "source": "/api/crtm/(.*)",
-      "destination": "https://www.crtm.es/$1"
+      "destination": "/api/crtm-proxy"
     },
     {
       "source": "/(.*)",
