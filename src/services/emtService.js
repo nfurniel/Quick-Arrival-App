@@ -122,3 +122,111 @@ export async function getStopsAroundPoint(lng, lat, radius = 500) {
   const json = await response.json();
   return json.data || [];
 }
+
+/**
+ * Obtiene tiempos de llegada en tiempo real para una parada EMT urbana.
+ * Usa la API oficial de EMT (la misma que usa la app Transportes Madrid).
+ * Mucho más fiable que el endpoint de widgets del CRTM.
+ *
+ * @param {string|number} stopId - ID numérico de la parada EMT (ej: 2443)
+ * @param {AbortSignal} [signal] - Señal para cancelar la petición
+ * @returns {Object} { arrivals: Array, stale: false, cachedAt: null, error: boolean }
+ */
+export async function getEMTArrivals(stopId, signal) {
+  try {
+    const token = await emtLogin();
+
+    const url = `${BASE_URL}/v2/transport/busemtmad/stops/${stopId}/arrives/all/`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'accessToken': token,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        cultureInfo: 'ES',
+        Text_StopRequired_YN: 'Y',
+        Text_EstimationsRequired_YN: 'Y',
+        Text_IncidencesRequired_YN: 'N',
+      }),
+      signal,
+    });
+
+    if (!response.ok) {
+      // Si el token expiró, reintentar
+      if (response.status === 401 || response.status === 403) {
+        cachedToken = null;
+        tokenExpiry = null;
+        const freshToken = await emtLogin();
+        const retryResponse = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'accessToken': freshToken,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            cultureInfo: 'ES',
+            Text_StopRequired_YN: 'Y',
+            Text_EstimationsRequired_YN: 'Y',
+            Text_IncidencesRequired_YN: 'N',
+          }),
+          signal,
+        });
+        if (!retryResponse.ok) {
+          console.warn(`[EMT Arrivals] Retry falló: ${retryResponse.status}`);
+          return { arrivals: [], stale: false, cachedAt: null, error: true };
+        }
+        const retryJson = await retryResponse.json();
+        return parseEMTArrivals(retryJson);
+      }
+
+      console.warn(`[EMT Arrivals] Error ${response.status} para parada ${stopId}`);
+      return { arrivals: [], stale: false, cachedAt: null, error: true };
+    }
+
+    const json = await response.json();
+    return parseEMTArrivals(json);
+
+  } catch (error) {
+    if (error.name === 'AbortError') throw error;
+    console.error('[EMT Arrivals] Error:', error.message);
+    return { arrivals: [], stale: false, cachedAt: null, error: true };
+  }
+}
+
+/**
+ * Parsea la respuesta de la API EMT arrives y la convierte al mismo formato
+ * que usa getStopTimes en crtmService.js.
+ */
+function parseEMTArrivals(json) {
+  const arrivesData = json.data?.[0]?.Arrive || [];
+
+  if (arrivesData.length === 0) {
+    return { arrivals: [], stale: false, cachedAt: null, error: false };
+  }
+
+  const arrivals = arrivesData
+    .filter(a => a.estimateArrive > 0 && a.estimateArrive < 999999)
+    .map(a => ({
+      line: a.line || '?',
+      lineDescription: `Línea ${a.line}`,
+      destination: a.destination || '',
+      minutes: Math.round(a.estimateArrive / 60),
+      arrivalTime: new Date(Date.now() + a.estimateArrive * 1000)
+        .toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+      // Datos para localización del bus (ya incluidos en la respuesta EMT)
+      codMode: '6',
+      codLine: a.line || '',
+      direction: 1,
+      // Datos extra de EMT
+      busId: a.bus,
+      distanceMeters: a.DistanceBus,
+      busLocation: a.geometry?.coordinates
+        ? { longitude: a.geometry.coordinates[0], latitude: a.geometry.coordinates[1] }
+        : null,
+    }))
+    .slice(0, 6);
+
+  console.log(`[EMT Arrivals] ✅ ${arrivals.length} llegadas obtenidas`);
+  return { arrivals, stale: false, cachedAt: null, error: false };
+}

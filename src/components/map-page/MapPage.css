@@ -103,6 +103,32 @@
     background: rgba(0,0,0,0.05);
   }
 
+  /* Contenedor de acciones del header */
+  .map-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* Botón de logout */
+  .logout-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    transition: transform 0.2s ease, background 0.3s ease;
+  }
+
+  .logout-btn:hover {
+    transform: scale(1.1);
+    background: rgba(220, 38, 38, 0.1);
+  }
+
   /* --- DARK MODE ESTILOS --- */
   
   .dark-mode .map-floating-overlay {
@@ -119,6 +145,10 @@
   }
 
   .dark-mode .theme-toggle-btn:hover {
+    background: rgba(255,255,255,0.1);
+  }
+
+  .dark-mode .logout-btn:hover {
     background: rgba(255,255,255,0.1);
   }
 
@@ -297,6 +327,89 @@
 
   .dark-popup .bus-arrival-time {
     color: #ff6b8a;
+  }
+
+  /* --- Estado de error y retry --- */
+  .bus-arrivals-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 0;
+    font-size: 0.72rem;
+    color: #e74c3c;
+  }
+
+  .bus-retry-btn {
+    background: #fb2049;
+    color: white;
+    border: none;
+    padding: 5px 14px;
+    border-radius: 8px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.15s;
+  }
+
+  .bus-retry-btn:hover {
+    background: #d91840;
+    transform: scale(1.05);
+  }
+
+  .bus-retry-btn:active {
+    transform: scale(0.95);
+  }
+
+  /* --- Indicador de datos stale (caché antiguo) --- */
+  .bus-stale-notice {
+    font-size: 0.65rem;
+    color: #e67e22;
+    background: rgba(230, 126, 34, 0.1);
+    border: 1px solid rgba(230, 126, 34, 0.3);
+    border-radius: 6px;
+    padding: 4px 8px;
+    margin-bottom: 6px;
+    text-align: center;
+  }
+
+  /* --- Botón de refrescar pequeño --- */
+  .bus-refresh-btn {
+    display: block;
+    margin: 6px auto 0;
+    background: transparent;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 3px 10px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+  }
+
+  .bus-refresh-btn:hover {
+    background: #f0f0f0;
+    border-color: #bbb;
+  }
+
+  /* Dark mode para los nuevos elementos */
+  .dark-popup .bus-arrivals-error {
+    color: #ff6b6b;
+  }
+
+  .dark-popup .bus-stale-notice {
+    color: #f0a74a;
+    background: rgba(240, 167, 74, 0.15);
+    border-color: rgba(240, 167, 74, 0.3);
+  }
+
+  .dark-popup .bus-refresh-btn {
+    border-color: #555;
+    color: #ccc;
+  }
+
+  .dark-popup .bus-refresh-btn:hover {
+    background: #333;
+    border-color: #777;
   }
 
   /* --- Elementos de Seguimiento en Vivo --- */

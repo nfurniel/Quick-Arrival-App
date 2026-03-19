@@ -2,11 +2,13 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+import { useNavigate } from 'react-router-dom';
 import './MapPage.css';
 import lightThemeIcon from '../../assets/light-theme-icon.png';
 import darkThemeIcon from '../../assets/dark-theme-icon.png';
 import busIconImg from '../../assets/icono-bus3.jpg';
 import { getCRTMStopsInBounds, getStopTimes, getBusLocation } from '../../services/crtmService';
+import { supabase } from '../../supabaseClient';
 
 // Importando todos los avatares disponibles
 import avatar1 from '../../assets/avatar/avatar1.png';
@@ -213,31 +215,49 @@ function StopMarker({ position, icon, isActive, isDarkMode, stopName, stopType, 
 function BusStopPopup({ stopName, stopType, lines, codStop, onSelectBus }) {
   const [arrivals, setArrivals] = useState(null);
   const [loadingTimes, setLoadingTimes] = useState(false);
-  // Cargar tiempos cuando el componente se monta (es decir, el usuario abre el popup)
-  useEffect(() => {
+  const [isStale, setIsStale] = useState(false);
+  const [cachedAt, setCachedAt] = useState(null);
+  const [hasError, setHasError] = useState(false);
+  const abortRef = useRef(null);
+
+  const fetchTimes = useCallback(async () => {
+    // Cancelar petición anterior si existe
+    if (abortRef.current) abortRef.current.abort();
     const abortController = new AbortController();
+    abortRef.current = abortController;
 
-    async function fetchTimes() {
-      setLoadingTimes(true);
-      try {
-        const times = await getStopTimes(codStop, abortController.signal);
-        if (!abortController.signal.aborted) setArrivals(times);
-      } catch (e) {
-        if (e.name === 'AbortError') return; // Petición cancelada al cerrar popup, ignorar
-        console.error('Error fetching stop times:', e);
-        if (!abortController.signal.aborted) setArrivals([]);
-      } finally {
-        if (!abortController.signal.aborted) setLoadingTimes(false);
+    setLoadingTimes(true);
+    setHasError(false);
+    try {
+      const result = await getStopTimes(codStop, abortController.signal);
+      if (!abortController.signal.aborted) {
+        setArrivals(result.arrivals);
+        setIsStale(result.stale);
+        setCachedAt(result.cachedAt);
+        setHasError(result.error);
       }
+    } catch (e) {
+      if (e.name === 'AbortError') return;
+      console.error('Error fetching stop times:', e);
+      if (!abortController.signal.aborted) {
+        setArrivals([]);
+        setHasError(true);
+      }
+    } finally {
+      if (!abortController.signal.aborted) setLoadingTimes(false);
     }
-
-    fetchTimes();
-
-    return () => {
-      // Cancelar la petición HTTP al cerrar el popup
-      abortController.abort();
-    };
   }, [codStop]);
+
+  // Cargar tiempos cuando el componente se monta (usuario abre el popup)
+  useEffect(() => {
+    fetchTimes();
+    return () => {
+      if (abortRef.current) abortRef.current.abort();
+    };
+  }, [fetchTimes]);
+
+  // Calcular texto de antigüedad para datos stale
+  const staleMinutes = cachedAt ? Math.round((Date.now() - cachedAt.getTime()) / 60000) : 0;
 
   return (
     <div className="bus-popup-content">
@@ -254,19 +274,42 @@ function BusStopPopup({ stopName, stopType, lines, codStop, onSelectBus }) {
 
       <div className="bus-arrivals-section">
         <span className="bus-arrivals-title">Próximos buses:</span>
+
+        {/* Indicador de datos stale */}
+        {isStale && (
+          <div className="bus-stale-notice">
+            Datos de hace {staleMinutes} min (API no disponible)
+          </div>
+        )}
+
+        {/* Estado de carga */}
         {loadingTimes && (
           <div className="bus-arrivals-loading">Cargando...</div>
         )}
-        {arrivals && arrivals.length === 0 && !loadingTimes && (
-          <div className="bus-arrivals-empty">Sin datos en tiempo real</div>
+
+        {/* Error: API falló sin datos de caché */}
+        {hasError && !loadingTimes && (
+          <div className="bus-arrivals-error">
+            <span>No se pudo conectar con CRTM</span>
+            <button className="bus-retry-btn" onClick={(e) => { e.stopPropagation(); fetchTimes(); }}>
+              Reintentar
+            </button>
+          </div>
         )}
+
+        {/* Sin datos (API respondió OK pero no hay buses) */}
+        {arrivals && arrivals.length === 0 && !loadingTimes && !hasError && (
+          <div className="bus-arrivals-empty">Sin servicio en este momento</div>
+        )}
+
+        {/* Lista de llegadas */}
         {arrivals && arrivals.length > 0 && (
           <div className="bus-arrivals-list">
             {arrivals.map((a, i) => (
               <div
                 key={i}
                 className="bus-arrival-row clickable-arrival"
-                onClick={() => onSelectBus({ ...a, codStop, stopName })}
+                onClick={(e) => { e.stopPropagation(); onSelectBus({ ...a, codStop, stopName }); }}
               >
                 <span className="bus-arrival-line">{a.line}</span>
                 <span className="bus-arrival-dest">{a.destination}</span>
@@ -276,6 +319,12 @@ function BusStopPopup({ stopName, stopType, lines, codStop, onSelectBus }) {
               </div>
             ))}
           </div>
+        )}
+
+        {/* Botón de recargar después de mostrar datos (stale o normales) */}
+        {arrivals && arrivals.length > 0 && !loadingTimes && (
+          <button className="bus-refresh-btn" onClick={(e) => { e.stopPropagation(); fetchTimes(); }} title="Actualizar tiempos">🔄 Actualizar
+          </button>
         )}
       </div>
     </div>
@@ -287,6 +336,12 @@ export default function MapPage() {
   const [loadingLocation, setLoadingLocation] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [selectedBus, setSelectedBus] = useState(null);
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate('/');
+  };
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -360,17 +415,27 @@ export default function MapPage() {
             <h2>Quick Arrival</h2>
             <p>Explora tus paradas</p>
           </div>
-          <button
-            className="theme-toggle-btn"
-            onClick={() => setIsDarkMode(!isDarkMode)}
-            aria-label="Toggle theme"
-          >
-            <img
-              src={isDarkMode ? lightThemeIcon : darkThemeIcon}
-              alt="Toggle theme"
-              className="theme-toggle-icon"
-            />
-          </button>
+          <div className="map-header-actions">
+            <button
+              className="theme-toggle-btn"
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              aria-label="Toggle theme"
+            >
+              <img
+                src={isDarkMode ? lightThemeIcon : darkThemeIcon}
+                alt="Toggle theme"
+                className="theme-toggle-icon"
+              />
+            </button>
+            <button
+              className="logout-btn"
+              onClick={handleLogout}
+              aria-label="Cerrar sesión"
+              title="Cerrar sesión"
+            >
+              Cerrar Sesión
+            </button>
+          </div>
         </div>
       </div>
       {/* Panel flotante de información del bus seleccionado */}
@@ -405,7 +470,7 @@ function LiveBusLayer({ selectedBus }) {
   useEffect(() => {
     if (!selectedBus) return;
 
-    let intervalId;
+    let timeoutId;
     let isMounted = true;
 
     async function fetchLocation() {
@@ -418,34 +483,29 @@ function LiveBusLayer({ selectedBus }) {
         );
 
         if (locations && locations.length > 0 && isMounted) {
-          // Guardar todos los buses encontrados
           setBusLocations(locations);
-
           if (!hasCentered.current) {
             hasCentered.current = true;
-            setTimeout(() => {
-              if (isMounted) {
-                // Centramos en el primer bus
-                map.flyTo([locations[0].latitude, locations[0].longitude], map.getZoom(), { animate: true, duration: 1.5 });
-              }
-            }, 100);
+            map.setView([locations[0].latitude, locations[0].longitude], 15, { animate: true });
           }
         }
-        // Si locations está vacío, NO borramos las anteriores (mantenemos última posición conocida)
       } catch (e) {
         console.error("Error fetching live bus:", e);
+      } finally {
+        if (isMounted) {
+          // Usamos setTimeout recursivo (20s)
+          // que peticiones lentas o reintentos se superpongan y ahoguen el servidor CRTM.
+          timeoutId = setTimeout(fetchLocation, 20000);
+        }
       }
     }
 
     // Petición inmediata
     fetchLocation();
 
-    // Polling cada 12 segundos para no saturar la API
-    intervalId = setInterval(fetchLocation, 12000);
-
     return () => {
       isMounted = false;
-      clearInterval(intervalId);
+      clearTimeout(timeoutId);
     };
   }, [selectedBus, map]);
 
