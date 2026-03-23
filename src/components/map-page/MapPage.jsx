@@ -7,10 +7,11 @@ import './MapPage.css';
 import lightThemeIcon from '../../assets/light-theme-icon.png';
 import darkThemeIcon from '../../assets/dark-theme-icon.png';
 import busIconImg from '../../assets/icono-bus3.jpg';
-import { getCRTMStopsInBounds, getStopTimes, getBusLocation } from '../../services/crtmService';
+import { getStopTimes, getBusLocation } from '../../services/crtmService';
+import { getStopsInBounds } from '../../services/stopsService';
 import { supabase } from '../../supabaseClient';
 
-// Importando todos los avatares disponibles
+// Avatares para el marcador del usuario
 import avatar1 from '../../assets/avatar/avatar1.png';
 import avatar2 from '../../assets/avatar/avatar2.png';
 import avatar3 from '../../assets/avatar/avatar3.png';
@@ -31,10 +32,10 @@ const avatars = [
   avatar8, avatar9, avatar10, avatar11, avatar12, avatar13, avatar14
 ];
 
-// Seleccionar un avatar aleatorio en la carga inicial
+// Elegir un avatar random cada vez que se carga la pagina
 const randomAvatarUrl = avatars[Math.floor(Math.random() * avatars.length)];
 
-// Fix for default marker icons in Leaflet with Webpack/Vite
+// Fix para los iconos por defecto de Leaflet con Vite
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
@@ -42,8 +43,8 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-// Definir el icono personalizado para el usuario con un avatar aleatorio
-const customUserIcon = new L.Icon({
+// Icono del usuario (avatar random)
+const userIcon = new L.Icon({
   iconUrl: randomAvatarUrl,
   iconSize: [64, 64],
   iconAnchor: [32, 32],
@@ -51,7 +52,7 @@ const customUserIcon = new L.Icon({
   className: 'custom-user-marker'
 });
 
-// Icono personalizado para las paradas de bus
+// Icono normal de parada de bus
 const busStopIcon = new L.Icon({
   iconUrl: busIconImg,
   iconSize: [30, 30],
@@ -60,7 +61,7 @@ const busStopIcon = new L.Icon({
   className: 'bus-stop-marker'
 });
 
-// Icono personalizado para la parada de bus activa (seleccionada)
+// Icono de parada seleccionada (un poco mas grande y con borde rojo)
 const activeBusStopIcon = new L.Icon({
   iconUrl: busIconImg,
   iconSize: [36, 36],
@@ -69,7 +70,7 @@ const activeBusStopIcon = new L.Icon({
   className: 'bus-stop-marker active-bus-stop-marker'
 });
 
-// Icono animado para el bus en tiempo real
+// Icono del bus en movimiento
 const liveBusIcon = new L.Icon({
   iconUrl: busIconImg,
   iconSize: [36, 36],
@@ -78,7 +79,7 @@ const liveBusIcon = new L.Icon({
   className: 'live-bus-marker'
 });
 
-// Control manual para centrar en la ubicación del usuario
+// Boton para centrar el mapa en la ubicacion del usuario
 function LocateControl({ position }) {
   const map = useMap();
   return (
@@ -92,29 +93,29 @@ function LocateControl({ position }) {
           }}
           title="Centrar en mi ubicación"
         >
-          🛰️
+          Centrar
         </button>
       </div>
     </div>
   );
 }
 
-// Sub-componente que escucha los movimientos del mapa y pide paradas al CRTM
+// Componente que carga y muestra las paradas de bus en el mapa
+// Las paradas se cargan desde Supabase cada vez que el usuario mueve el mapa
 function BusStopsLayer({ isDarkMode, onSelectBus, selectedBus }) {
   const [stops, setStops] = useState([]);
   const [loading, setLoading] = useState(false);
   const debounceRef = useRef(null);
   const map = useMapEvents({
     moveend: () => {
-      fetchStopsForView();
+      cargarParadas();
     },
   });
 
-  const fetchStopsForView = useCallback(() => {
-    // Debounce: esperar 500ms después del último movimiento
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-    }
+  // Cargar las paradas del area visible con un debounce de 300ms
+  const cargarParadas = useCallback(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
     debounceRef.current = setTimeout(async () => {
       const bounds = map.getBounds();
       const sw = bounds.getSouthWest();
@@ -122,20 +123,19 @@ function BusStopsLayer({ isDarkMode, onSelectBus, selectedBus }) {
 
       try {
         setLoading(true);
-        // CRTM API usa bounds del viewport: (minLng, minLat, maxLng, maxLat)
-        const features = await getCRTMStopsInBounds(sw.lng, sw.lat, ne.lng, ne.lat);
-        setStops(features);
+        const data = await getStopsInBounds(sw.lng, sw.lat, ne.lng, ne.lat);
+        setStops(data);
       } catch (error) {
-        console.error('Error al cargar paradas CRTM:', error);
+        console.error('Error cargando paradas:', error);
       } finally {
         setLoading(false);
       }
-    }, 500);
+    }, 300);
   }, [map]);
 
-  // Cargar paradas cuando se monta el componente
+  // Cargar paradas al montar el componente
   useEffect(() => {
-    fetchStopsForView();
+    cargarParadas();
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
@@ -143,32 +143,28 @@ function BusStopsLayer({ isDarkMode, onSelectBus, selectedBus }) {
 
   return (
     <>
-      {stops.map((feature, index) => {
-        const coords = feature.geometry?.coordinates;
-        if (!coords || coords.length < 2) return null;
+      {stops.map((stop) => {
+        if (!stop.lat || !stop.lng) return null;
 
-        const position = [coords[1], coords[0]]; // [lat, lng]
-        const props = feature.properties || {};
-        const stopName = props.DENOMINACION || 'Parada';
-        const linesStr = props.LINEAS || '';
-        const lines = linesStr ? linesStr.split(',').map(l => l.trim()) : [];
-        const stopType = feature._type === 'interurbano' ? 'Interurbano' : 'Urbano';
-        const codMode = feature._type === 'interurbano' ? '8' : '6';
-        const codStop = `${codMode}_${props.CODIGOESTACION}`;
+        const position = [stop.lat, stop.lng];
+        const nombre = stop.name || 'Parada';
+        const lineas = stop.lines ? stop.lines.split(',').map(l => l.trim()) : [];
+        const tipo = stop.cod_mode === 8 ? 'Interurbano' : 'Urbano';
+        const codStop = `${stop.cod_mode}_${stop.cod_estacion}`;
 
-        const isActive = selectedBus && codStop === selectedBus.codStop;
-        const currentIcon = isActive ? activeBusStopIcon : busStopIcon;
+        const estaActiva = selectedBus && codStop === selectedBus.codStop;
+        const icono = estaActiva ? activeBusStopIcon : busStopIcon;
 
         return (
           <StopMarker
-            key={props.CODIGOESTACION || `crtm-${index}`}
+            key={stop.stop_id}
             position={position}
-            icon={currentIcon}
-            isActive={isActive}
+            icon={icono}
+            isActive={estaActiva}
             isDarkMode={isDarkMode}
-            stopName={stopName}
-            stopType={stopType}
-            lines={lines}
+            stopName={nombre}
+            stopType={tipo}
+            lines={lineas}
             codStop={codStop}
             onSelectBus={onSelectBus}
           />
@@ -178,7 +174,7 @@ function BusStopsLayer({ isDarkMode, onSelectBus, selectedBus }) {
   );
 }
 
-// Sub-componente para gestionar el estado Abierto/Cerrado del marcador
+// Marcador individual de una parada con su popup
 function StopMarker({ position, icon, isActive, isDarkMode, stopName, stopType, lines, codStop, onSelectBus }) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -211,53 +207,59 @@ function StopMarker({ position, icon, isActive, isDarkMode, stopName, stopType, 
   );
 }
 
-// Sub-componente para el popup de una parada con tiempos en tiempo real
+// Popup con los tiempos de llegada en tiempo real
 function BusStopPopup({ stopName, stopType, lines, codStop, onSelectBus }) {
   const [arrivals, setArrivals] = useState(null);
-  const [loadingTimes, setLoadingTimes] = useState(false);
-  const [isStale, setIsStale] = useState(false);
+  const [cargando, setCargando] = useState(false);
+  const [datosAntiguos, setDatosAntiguos] = useState(false);
   const [cachedAt, setCachedAt] = useState(null);
-  const [hasError, setHasError] = useState(false);
+  const [hayError, setHayError] = useState(false);
+  const [servidorCaido, setServidorCaido] = useState(false);
   const abortRef = useRef(null);
 
-  const fetchTimes = useCallback(async () => {
-    // Cancelar petición anterior si existe
-    if (abortRef.current) abortRef.current.abort();
-    const abortController = new AbortController();
-    abortRef.current = abortController;
+  const esInterurbano = codStop.startsWith('8_');
 
-    setLoadingTimes(true);
-    setHasError(false);
+  // Pedir los tiempos de llegada
+  const pedirTiempos = useCallback(async () => {
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    setCargando(true);
+    setHayError(false);
+    setServidorCaido(false);
+
     try {
-      const result = await getStopTimes(codStop, abortController.signal);
-      if (!abortController.signal.aborted) {
-        setArrivals(result.arrivals);
-        setIsStale(result.stale);
-        setCachedAt(result.cachedAt);
-        setHasError(result.error);
+      const resultado = await getStopTimes(codStop, controller.signal);
+      if (!controller.signal.aborted) {
+        setArrivals(resultado.arrivals);
+        setDatosAntiguos(resultado.stale);
+        setCachedAt(resultado.cachedAt);
+        setHayError(resultado.error);
+        setServidorCaido(resultado.serverDown || false);
       }
     } catch (e) {
       if (e.name === 'AbortError') return;
-      console.error('Error fetching stop times:', e);
-      if (!abortController.signal.aborted) {
+      console.error('Error pidiendo tiempos:', e);
+      if (!controller.signal.aborted) {
         setArrivals([]);
-        setHasError(true);
+        setHayError(true);
+        setServidorCaido(true);
       }
     } finally {
-      if (!abortController.signal.aborted) setLoadingTimes(false);
+      if (!controller.signal.aborted) setCargando(false);
     }
   }, [codStop]);
 
-  // Cargar tiempos cuando el componente se monta (usuario abre el popup)
+  // Pedir tiempos cuando se abre el popup
   useEffect(() => {
-    fetchTimes();
+    pedirTiempos();
     return () => {
       if (abortRef.current) abortRef.current.abort();
     };
-  }, [fetchTimes]);
+  }, [pedirTiempos]);
 
-  // Calcular texto de antigüedad para datos stale
-  const staleMinutes = cachedAt ? Math.round((Date.now() - cachedAt.getTime()) / 60000) : 0;
+  const minutosCacheados = cachedAt ? Math.round((Date.now() - cachedAt.getTime()) / 60000) : 0;
 
   return (
     <div className="bus-popup-content">
@@ -275,30 +277,37 @@ function BusStopPopup({ stopName, stopType, lines, codStop, onSelectBus }) {
       <div className="bus-arrivals-section">
         <span className="bus-arrivals-title">Próximos buses:</span>
 
-        {/* Indicador de datos stale */}
-        {isStale && (
+        {/* Aviso si los datos son antiguos (cache) */}
+        {datosAntiguos && (
           <div className="bus-stale-notice">
-            Datos de hace {staleMinutes} min (API no disponible)
+            Datos de hace {minutosCacheados} min (API no disponible)
           </div>
         )}
 
-        {/* Estado de carga */}
-        {loadingTimes && (
+        {/* Spinner de carga */}
+        {cargando && (
           <div className="bus-arrivals-loading">Cargando...</div>
         )}
 
-        {/* Error: API falló sin datos de caché */}
-        {hasError && !loadingTimes && (
+        {/* Mensaje de error */}
+        {hayError && !cargando && (
           <div className="bus-arrivals-error">
-            <span>No se pudo conectar con CRTM</span>
-            <button className="bus-retry-btn" onClick={(e) => { e.stopPropagation(); fetchTimes(); }}>
+            {servidorCaido && esInterurbano ? (
+              <>
+                <span>Servidor CRTM no disponible</span>
+                <span className="bus-error-hint">Los servidores del CRTM suelen tener problemas. Vuelve a intentarlo en unos segundos.</span>
+              </>
+            ) : (
+              <span>No se pudo obtener los tiempos</span>
+            )}
+            <button className="bus-retry-btn" onClick={(e) => { e.stopPropagation(); pedirTiempos(); }}>
               Reintentar
             </button>
           </div>
         )}
 
-        {/* Sin datos (API respondió OK pero no hay buses) */}
-        {arrivals && arrivals.length === 0 && !loadingTimes && !hasError && (
+        {/* No hay buses ahora */}
+        {arrivals && arrivals.length === 0 && !cargando && !hayError && (
           <div className="bus-arrivals-empty">Sin servicio en este momento</div>
         )}
 
@@ -321,9 +330,9 @@ function BusStopPopup({ stopName, stopType, lines, codStop, onSelectBus }) {
           </div>
         )}
 
-        {/* Botón de recargar después de mostrar datos (stale o normales) */}
-        {arrivals && arrivals.length > 0 && !loadingTimes && (
-          <button className="bus-refresh-btn" onClick={(e) => { e.stopPropagation(); fetchTimes(); }} title="Actualizar tiempos">🔄 Actualizar
+        {/* Boton de actualizar */}
+        {arrivals && arrivals.length > 0 && !cargando && (
+          <button className="bus-refresh-btn" onClick={(e) => { e.stopPropagation(); pedirTiempos(); }} title="Actualizar tiempos">Actualizar
           </button>
         )}
       </div>
@@ -331,6 +340,7 @@ function BusStopPopup({ stopName, stopType, lines, codStop, onSelectBus }) {
   );
 }
 
+// Componente principal del mapa
 export default function MapPage() {
   const [userLocation, setUserLocation] = useState(null);
   const [loadingLocation, setLoadingLocation] = useState(true);
@@ -343,15 +353,17 @@ export default function MapPage() {
     navigate('/');
   };
 
+  // Obtener ubicacion del usuario al cargar
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setUserLocation([position.coords.latitude, position.coords.longitude]);
+        (pos) => {
+          setUserLocation([pos.coords.latitude, pos.coords.longitude]);
           setLoadingLocation(false);
         },
         (error) => {
-          console.error("Error al obtener la ubicación:", error);
+          console.error("Error obteniendo ubicacion:", error);
+          // Si falla, centrar en Madrid
           setUserLocation([40.4168, -3.7038]);
           setLoadingLocation(false);
         }
@@ -362,6 +374,7 @@ export default function MapPage() {
     }
   }, []);
 
+  // Pantalla de carga mientras buscamos la ubicacion
   if (loadingLocation) {
     return (
       <div className="map-loading-screen">
@@ -371,9 +384,10 @@ export default function MapPage() {
     );
   }
 
+  // URLs de los tiles del mapa (CartoDB sin etiquetas)
   const lightTileUrl = "https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png";
   const darkTileUrl = "https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png";
-  const currentTileUrl = isDarkMode ? darkTileUrl : lightTileUrl;
+  const tileUrl = isDarkMode ? darkTileUrl : lightTileUrl;
 
   return (
     <div className={`map-page-container ${isDarkMode ? 'dark-mode' : 'light-mode'}`}>
@@ -384,31 +398,30 @@ export default function MapPage() {
         className="leaflet-map-wrapper"
         zoomControl={false}
       >
-        {/* Botón para centrar en usuario */}
         {userLocation && <LocateControl position={userLocation} />}
 
         <TileLayer
           attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-          url={currentTileUrl}
+          url={tileUrl}
         />
 
-        {/* Capa de seguimiento de bus en tiempo real */}
+        {/* Bus en tiempo real */}
         {selectedBus && <LiveBusLayer selectedBus={selectedBus} />}
 
         {/* Marcador del usuario */}
         {userLocation && (
-          <Marker position={userLocation} icon={customUserIcon}>
+          <Marker position={userLocation} icon={userIcon}>
             <Popup className={isDarkMode ? 'dark-popup' : ''}>
               ¡Estás aquí!
             </Popup>
           </Marker>
         )}
 
-        {/* Capa de paradas de bus EMT */}
+        {/* Paradas de bus */}
         <BusStopsLayer isDarkMode={isDarkMode} onSelectBus={setSelectedBus} selectedBus={selectedBus} />
       </MapContainer>
 
-      {/* Panel flotante superior */}
+      {/* Cabecera flotante */}
       <div className="map-floating-overlay">
         <div className="map-overlay-header">
           <div>
@@ -438,7 +451,8 @@ export default function MapPage() {
           </div>
         </div>
       </div>
-      {/* Panel flotante de información del bus seleccionado */}
+
+      {/* Panel de seguimiento del bus */}
       {selectedBus && (
         <div className={`live-bus-panel ${isDarkMode ? 'dark-panel' : ''}`}>
           <div className="live-bus-panel-header">
@@ -447,7 +461,7 @@ export default function MapPage() {
           </div>
           <div className="live-bus-panel-body">
             <p>Hacia: {selectedBus.destination}</p>
-            <p>Parada destino: {selectedBus.stopName}</p>
+            <p>Parada: {selectedBus.stopName}</p>
           </div>
         </div>
       )}
@@ -455,56 +469,56 @@ export default function MapPage() {
   );
 }
 
-// Sub-componente para seguimiento en vivo
+// Componente que muestra el bus moviéndose en tiempo real
 function LiveBusLayer({ selectedBus }) {
   const [busLocations, setBusLocations] = useState([]);
   const map = useMap();
-  const hasCentered = useRef(false);
+  const yaCentrado = useRef(false);
 
+  // Resetear cuando cambiamos de bus
   useEffect(() => {
-    // Resetear el flag de centrado si cambiamos de bus
-    hasCentered.current = false;
+    yaCentrado.current = false;
     setBusLocations([]);
   }, [selectedBus]);
 
+  // Pedir la ubicacion del bus cada 20 segundos
   useEffect(() => {
     if (!selectedBus) return;
 
     let timeoutId;
-    let isMounted = true;
+    let montado = true;
 
-    async function fetchLocation() {
+    async function pedirUbicacion() {
       try {
-        const locations = await getBusLocation(
+        const ubicaciones = await getBusLocation(
           selectedBus.codMode,
           selectedBus.codLine,
           selectedBus.direction,
           selectedBus.codStop
         );
 
-        if (locations && locations.length > 0 && isMounted) {
-          setBusLocations(locations);
-          if (!hasCentered.current) {
-            hasCentered.current = true;
-            map.setView([locations[0].latitude, locations[0].longitude], 15, { animate: true });
+        if (ubicaciones && ubicaciones.length > 0 && montado) {
+          setBusLocations(ubicaciones);
+          // Centrar el mapa en el bus la primera vez
+          if (!yaCentrado.current) {
+            yaCentrado.current = true;
+            map.setView([ubicaciones[0].latitude, ubicaciones[0].longitude], 15, { animate: true });
           }
         }
       } catch (e) {
-        console.error("Error fetching live bus:", e);
+        console.error("Error obteniendo ubicacion del bus:", e);
       } finally {
-        if (isMounted) {
-          // Usamos setTimeout recursivo (20s)
-          // que peticiones lentas o reintentos se superpongan y ahoguen el servidor CRTM.
-          timeoutId = setTimeout(fetchLocation, 20000);
+        // Programar la siguiente peticion (20s)
+        if (montado) {
+          timeoutId = setTimeout(pedirUbicacion, 20000);
         }
       }
     }
 
-    // Petición inmediata
-    fetchLocation();
+    pedirUbicacion();
 
     return () => {
-      isMounted = false;
+      montado = false;
       clearTimeout(timeoutId);
     };
   }, [selectedBus, map]);
@@ -530,3 +544,4 @@ function LiveBusLayer({ selectedBus }) {
     </>
   );
 }
+

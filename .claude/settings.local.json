@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node scripts/importStops.mjs)",
+      "Bash(npm run:*)",
+      "WebFetch(domain:navitia.io)",
+      "WebFetch(domain:www.navitia.io)",
+      "WebSearch",
+      "WebFetch(domain:www.here.com)",
+      "Bash(npx vite:*)",
+      "WebFetch(domain:data.renfe.com)",
+      "WebFetch(domain:gtfsrt.renfe.com)",
+      "WebFetch(domain:community.home-assistant.io)",
+      "WebFetch(domain:www.crtm.es)",
+      "WebFetch(domain:www.mediavida.com)",
+      "WebFetch(domain:datos-movilidad.crtm.es)",
+      "Bash(curl -s -w \"\\\\n\\\\nHTTP_STATUS:%{http_code}\" \"https://gtfsrt.renfe.com/vehicle_positions.json\")",
+      "Bash(curl -s -w \"\\\\n\\\\nHTTP_STATUS:%{http_code}\" \"https://gtfsrt.renfe.com/trip_updates.json\")",
+      "Bash(curl -s \"https://services5.arcgis.com/UxADft6QPcvFyDU1/arcgis/rest/services/M5_Red/FeatureServer/0/query?where=1%3D1&outFields=DENOMINACION,LINEAS,CODIGOESTACION&resultRecordCount=3&outSR=4326&f=geojson\")",
+      "Bash(curl -s -w \"\\\\n\\\\nHTTP_STATUS: %{http_code}\" \"https://services5.arcgis.com/UxADft6QPcvFyDU1/arcgis/rest/services/M5_Red/FeatureServer/0/query?where=1%3D1&outFields=DENOMINACION,LINEAS,CODIGOESTACION&resultRecordCount=5&outSR=4326&f=geojson\")",
+      "Bash(curl -s -w \"\\\\n\\\\nHTTP_STATUS: %{http_code}\" \"https://services5.arcgis.com/UxADft6QPcvFyDU1/arcgis/rest/services/M5_Red/FeatureServer/0/query?where=1%3D1&outFields=*&resultRecordCount=3&outSR=4326&f=json\")",
+      "WebFetch(domain:services5.arcgis.com)",
+      "Bash(curl:*)",
+      "Bash(node scripts/importCercanias.mjs)",
+      "Bash(find 'C:\\\\Users\\\\nicop\\\\Desktop\\\\TRABAJO FIN DE CLICLO\\\\Quick-Arrival-App' -type f \\\\\\(-name *.js -o -name *.jsx -o -name *.json -o -name *.md -o -name *.svg \\\\\\))",
+      "Bash(grep -r \"cercan\\\\|Cercan\\\\|renfe\\\\|Renfe\\\\|RENFE\" 'C:\\\\Users\\\\nicop\\\\Desktop\\\\TRABAJO FIN DE CLICLO\\\\Quick-Arrival-App' --include=*.js --include=*.jsx --include=*.json --include=*.md --include=*.mjs --include=*.txt)",
+      "Bash(cd:*)"
+    ]
+  }
+}

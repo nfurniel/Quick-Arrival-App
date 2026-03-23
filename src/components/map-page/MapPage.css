@@ -340,6 +340,18 @@
     color: #e74c3c;
   }
 
+  .bus-error-hint {
+    font-size: 0.65rem;
+    color: #999;
+    text-align: center;
+    line-height: 1.3;
+    margin-top: 2px;
+  }
+
+  .dark-popup .bus-error-hint {
+    color: #aaa;
+  }
+
   .bus-retry-btn {
     background: #fb2049;
     color: white;

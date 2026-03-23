@@ -1,224 +1,187 @@
-// emtService.js — Servicio para comunicar con la API de EMT Madrid
+// emtService.js - Servicio para la API de EMT Madrid (buses urbanos)
 // Docs: https://apidocs.emtmadrid.es/
-// Las peticiones se enrutan a través del proxy de Vite (/api/emt -> openapi.emtmadrid.es)
+// Las peticiones van a traves del proxy de Vite (/api/emt -> openapi.emtmadrid.es)
 
 const BASE_URL = '/api/emt';
 
-let cachedToken = null;
-let tokenExpiry = null;
+// Guardar el token para no hacer login en cada peticion
+let tokenGuardado = null;
+let tokenExpira = null;
 
-/**
- * Inicia sesión en la API de EMT y obtiene un accessToken.
- * Usa email y password como headers (nivel Advanced).
- * Si falla, intenta con X-ClientId y passKey (nivel Protected).
- */
+// Hacer login en la API de EMT y obtener el token de acceso
 export async function emtLogin() {
-  // Si tenemos un token válido con margen, lo reutilizamos
-  if (cachedToken && tokenExpiry && Date.now() < tokenExpiry - 60000) {
-    return cachedToken;
+  // Si ya tenemos un token valido, lo reutilizamos
+  if (tokenGuardado && tokenExpira && Date.now() < tokenExpira - 60000) {
+    return tokenGuardado;
   }
 
+  // Credenciales del .env
   const email = import.meta.env.VITE_EMT_EMAIL;
   const password = import.meta.env.VITE_EMT_PASSWORD;
   const clientId = import.meta.env.VITE_EMT_CLIENT_ID;
   const passKey = import.meta.env.VITE_EMT_PASSKEY;
 
-  // Intentar primero con email + password (nivel básico/advanced)
-  const loginAttempts = [
+  // Probar diferentes endpoints de login por si alguno falla
+  const intentos = [
     {
       url: `${BASE_URL}/v2/mobilitylabs/user/login/`,
       headers: { 'email': email, 'password': password },
-      label: 'v2 email+password',
+      nombre: 'v2 email+password',
     },
     {
       url: `${BASE_URL}/v1/mobilitylabs/user/login/`,
       headers: { 'email': email, 'password': password },
-      label: 'v1 email+password',
+      nombre: 'v1 email+password',
     },
     {
       url: `${BASE_URL}/v3/mobilitylabs/user/login/`,
       headers: { 'email': email, 'password': password },
-      label: 'v3 email+password',
+      nombre: 'v3 email+password',
     },
     {
       url: `${BASE_URL}/v1/mobilitylabs/user/login/`,
       headers: { 'X-ClientId': clientId, 'passKey': passKey },
-      label: 'v1 clientId+passKey',
+      nombre: 'v1 clientId+passKey',
     },
   ];
 
-  for (const attempt of loginAttempts) {
+  for (const intento of intentos) {
     try {
-      console.log(`EMT Login: Intentando ${attempt.label}...`);
-      const response = await fetch(attempt.url, {
+      console.log(`EMT Login: Probando ${intento.nombre}...`);
+      const response = await fetch(intento.url, {
         method: 'GET',
-        headers: attempt.headers,
+        headers: intento.headers,
       });
 
       if (!response.ok) {
-        console.warn(`EMT Login (${attempt.label}): ${response.status} ${response.statusText}`);
+        console.warn(`EMT Login (${intento.nombre}): ${response.status}`);
         continue;
       }
 
       const json = await response.json();
+      const datos = json.data?.[0] || json.data;
 
-      // El token puede venir en distintas estructuras
-      const tokenData = json.data?.[0] || json.data;
-      if (tokenData?.accessToken) {
-        cachedToken = tokenData.accessToken;
-        const expiresInSec = tokenData.tokenSecExpiration || 86400;
-        tokenExpiry = Date.now() + expiresInSec * 1000;
-        console.log(`EMT Login (${attempt.label}): ✅ Token obtenido`);
-        return cachedToken;
+      if (datos?.accessToken) {
+        tokenGuardado = datos.accessToken;
+        const segundos = datos.tokenSecExpiration || 86400;
+        tokenExpira = Date.now() + segundos * 1000;
+        console.log(`EMT Login OK (${intento.nombre})`);
+        return tokenGuardado;
       }
     } catch (err) {
-      console.warn(`EMT Login (${attempt.label}): Error de red -`, err.message);
+      console.warn(`EMT Login (${intento.nombre}): Error -`, err.message);
     }
   }
 
-  throw new Error('No se pudo iniciar sesión en EMT con ningún método. Revisa tus credenciales en .env');
+  throw new Error('No se pudo hacer login en EMT. Revisa las credenciales del .env');
 }
 
-/**
- * Obtiene las paradas de bus cercanas a un punto geográfico.
- * @param {number} lng - Longitud
- * @param {number} lat - Latitud
- * @param {number} radius - Radio en metros (ej: 500)
- * @returns {Array} Array de objetos de paradas
- */
+// Obtener paradas cercanas a unas coordenadas
 export async function getStopsAroundPoint(lng, lat, radius = 500) {
   const token = await emtLogin();
-
   const url = `${BASE_URL}/v2/transport/busemtmad/stops/arroundxy/${lng}/${lat}/${radius}/`;
 
   const response = await fetch(url, {
     method: 'GET',
-    headers: {
-      'accessToken': token,
-    },
+    headers: { 'accessToken': token },
   });
 
   if (!response.ok) {
-    // Si el token expiró, reintentar con login fresco
+    // Si el token caduco, hacer login de nuevo y reintentar
     if (response.status === 401 || response.status === 403) {
-      cachedToken = null;
-      tokenExpiry = null;
-      const freshToken = await emtLogin();
-      const retryResponse = await fetch(url, {
+      tokenGuardado = null;
+      tokenExpira = null;
+      const nuevoToken = await emtLogin();
+      const retry = await fetch(url, {
         method: 'GET',
-        headers: {
-          'accessToken': freshToken,
-        },
+        headers: { 'accessToken': nuevoToken },
       });
-      if (!retryResponse.ok) {
-        throw new Error(`Error al obtener paradas EMT (retry): ${retryResponse.status}`);
-      }
-      const retryJson = await retryResponse.json();
+      if (!retry.ok) throw new Error(`Error paradas EMT: ${retry.status}`);
+      const retryJson = await retry.json();
       return retryJson.data || [];
     }
-    throw new Error(`Error al obtener paradas EMT: ${response.status}`);
+    throw new Error(`Error paradas EMT: ${response.status}`);
   }
 
   const json = await response.json();
   return json.data || [];
 }
 
-/**
- * Obtiene tiempos de llegada en tiempo real para una parada EMT urbana.
- * Usa la API oficial de EMT (la misma que usa la app Transportes Madrid).
- * Mucho más fiable que el endpoint de widgets del CRTM.
- *
- * @param {string|number} stopId - ID numérico de la parada EMT (ej: 2443)
- * @param {AbortSignal} [signal] - Señal para cancelar la petición
- * @returns {Object} { arrivals: Array, stale: false, cachedAt: null, error: boolean }
- */
+// Obtener tiempos de llegada en tiempo real de una parada EMT
+// Esta API es mucho mas fiable que la del CRTM para buses urbanos
 export async function getEMTArrivals(stopId, signal) {
   try {
     const token = await emtLogin();
 
     const url = `${BASE_URL}/v2/transport/busemtmad/stops/${stopId}/arrives/all/`;
+    const body = {
+      cultureInfo: 'ES',
+      Text_StopRequired_YN: 'Y',
+      Text_EstimationsRequired_YN: 'Y',
+      Text_IncidencesRequired_YN: 'N',
+    };
+
     const response = await fetch(url, {
       method: 'POST',
-      headers: {
-        'accessToken': token,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        cultureInfo: 'ES',
-        Text_StopRequired_YN: 'Y',
-        Text_EstimationsRequired_YN: 'Y',
-        Text_IncidencesRequired_YN: 'N',
-      }),
+      headers: { 'accessToken': token, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
       signal,
     });
 
     if (!response.ok) {
-      // Si el token expiró, reintentar
+      // Token caducado -> hacer login de nuevo
       if (response.status === 401 || response.status === 403) {
-        cachedToken = null;
-        tokenExpiry = null;
-        const freshToken = await emtLogin();
-        const retryResponse = await fetch(url, {
+        tokenGuardado = null;
+        tokenExpira = null;
+        const nuevoToken = await emtLogin();
+        const retry = await fetch(url, {
           method: 'POST',
-          headers: {
-            'accessToken': freshToken,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            cultureInfo: 'ES',
-            Text_StopRequired_YN: 'Y',
-            Text_EstimationsRequired_YN: 'Y',
-            Text_IncidencesRequired_YN: 'N',
-          }),
+          headers: { 'accessToken': nuevoToken, 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
           signal,
         });
-        if (!retryResponse.ok) {
-          console.warn(`[EMT Arrivals] Retry falló: ${retryResponse.status}`);
+        if (!retry.ok) {
+          console.warn(`[EMT] Retry fallo: ${retry.status}`);
           return { arrivals: [], stale: false, cachedAt: null, error: true };
         }
-        const retryJson = await retryResponse.json();
-        return parseEMTArrivals(retryJson);
+        const retryJson = await retry.json();
+        return parsearLlegadasEMT(retryJson);
       }
 
-      console.warn(`[EMT Arrivals] Error ${response.status} para parada ${stopId}`);
+      console.warn(`[EMT] Error ${response.status} para parada ${stopId}`);
       return { arrivals: [], stale: false, cachedAt: null, error: true };
     }
 
     const json = await response.json();
-    return parseEMTArrivals(json);
+    return parsearLlegadasEMT(json);
 
   } catch (error) {
     if (error.name === 'AbortError') throw error;
-    console.error('[EMT Arrivals] Error:', error.message);
+    console.error('[EMT] Error:', error.message);
     return { arrivals: [], stale: false, cachedAt: null, error: true };
   }
 }
 
-/**
- * Parsea la respuesta de la API EMT arrives y la convierte al mismo formato
- * que usa getStopTimes en crtmService.js.
- */
-function parseEMTArrivals(json) {
-  const arrivesData = json.data?.[0]?.Arrive || [];
+// Convertir la respuesta de EMT al formato que usa nuestro popup
+function parsearLlegadasEMT(json) {
+  const datos = json.data?.[0]?.Arrive || [];
 
-  if (arrivesData.length === 0) {
+  if (datos.length === 0) {
     return { arrivals: [], stale: false, cachedAt: null, error: false };
   }
 
-  const arrivals = arrivesData
+  const llegadas = datos
     .filter(a => a.estimateArrive > 0 && a.estimateArrive < 999999)
     .map(a => ({
       line: a.line || '?',
-      lineDescription: `Línea ${a.line}`,
+      lineDescription: `Linea ${a.line}`,
       destination: a.destination || '',
       minutes: Math.round(a.estimateArrive / 60),
       arrivalTime: new Date(Date.now() + a.estimateArrive * 1000)
         .toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
-      // Datos para localización del bus (ya incluidos en la respuesta EMT)
       codMode: '6',
       codLine: a.line || '',
       direction: 1,
-      // Datos extra de EMT
       busId: a.bus,
       distanceMeters: a.DistanceBus,
       busLocation: a.geometry?.coordinates
@@ -227,6 +190,6 @@ function parseEMTArrivals(json) {
     }))
     .slice(0, 6);
 
-  console.log(`[EMT Arrivals] ✅ ${arrivals.length} llegadas obtenidas`);
-  return { arrivals, stale: false, cachedAt: null, error: false };
+  console.log(`[EMT] ${llegadas.length} llegadas obtenidas`);
+  return { arrivals: llegadas, stale: false, cachedAt: null, error: false };
 }
