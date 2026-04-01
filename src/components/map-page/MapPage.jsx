@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import './MapPage.css';
 import lightThemeIcon from '../../assets/light-theme-icon.png';
 import darkThemeIcon from '../../assets/dark-theme-icon.png';
-import busIconImg from '../../assets/icono-bus3.jpg';
+import busIconImg from '../../assets/icono-parada-bus.png';
 import { getStopTimes, getBusLocation } from '../../services/crtmService';
 import { getStopsInBounds } from '../../services/stopsService';
 import { supabase } from '../../supabaseClient';
@@ -112,11 +112,20 @@ function BusStopsLayer({ isDarkMode, onSelectBus, selectedBus }) {
     },
   });
 
+  // Zoom minimo para cargar paradas (por debajo de este nivel hay demasiadas y peta)
+  const MIN_ZOOM_PARADAS = 15;
+
   // Cargar las paradas del area visible con un debounce de 300ms
   const cargarParadas = useCallback(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
     debounceRef.current = setTimeout(async () => {
+      // Si el zoom es muy bajo, no cargar paradas para evitar petadas
+      if (map.getZoom() < MIN_ZOOM_PARADAS) {
+        setStops([]);
+        return;
+      }
+
       const bounds = map.getBounds();
       const sw = bounds.getSouthWest();
       const ne = bounds.getNorthEast();
