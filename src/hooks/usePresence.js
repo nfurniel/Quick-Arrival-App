@@ -13,15 +13,25 @@ export default function usePresence(userLocation, userName, avatarIndex) {
   const channelRef = useRef(null);
   const currentUserIdRef = useRef(null);
 
+  // Guardar los valores actuales en refs para no recrear el canal
+  const locationRef = useRef(userLocation);
+  const nameRef = useRef(userName);
+  const avatarRef = useRef(avatarIndex);
+
+  locationRef.current = userLocation;
+  nameRef.current = userName;
+  avatarRef.current = avatarIndex;
+
+  // Crear el canal una sola vez
   useEffect(() => {
     if (!userLocation) return;
 
     let intervalId;
+    let montado = true;
 
     async function init() {
-      // Obtener el ID del usuario actual para no pintarse a si mismo
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user || !montado) return;
       currentUserIdRef.current = user.id;
 
       const channel = supabase.channel(CHANNEL_NAME, {
@@ -34,7 +44,6 @@ export default function usePresence(userLocation, userName, avatarIndex) {
           const users = [];
           Object.entries(state).forEach(([userId, presences]) => {
             if (userId === currentUserIdRef.current) return;
-            // Cada usuario puede tener varias presencias, coger la ultima
             const last = presences[presences.length - 1];
             if (last?.lat && last?.lng) {
               users.push({
@@ -50,21 +59,20 @@ export default function usePresence(userLocation, userName, avatarIndex) {
         })
         .subscribe(async (status) => {
           if (status === 'SUBSCRIBED') {
-            // Emitir ubicacion inicial
             await channel.track({
-              lat: userLocation[0],
-              lng: userLocation[1],
-              name: userName,
-              avatar: avatarIndex,
+              lat: locationRef.current[0],
+              lng: locationRef.current[1],
+              name: nameRef.current,
+              avatar: avatarRef.current,
             });
 
-            // Actualizar posicion periodicamente
             intervalId = setInterval(async () => {
+              if (!montado) return;
               await channel.track({
-                lat: userLocation[0],
-                lng: userLocation[1],
-                name: userName,
-                avatar: avatarIndex,
+                lat: locationRef.current[0],
+                lng: locationRef.current[1],
+                name: nameRef.current,
+                avatar: avatarRef.current,
               });
             }, UPDATE_INTERVAL);
           }
@@ -76,6 +84,7 @@ export default function usePresence(userLocation, userName, avatarIndex) {
     init();
 
     return () => {
+      montado = false;
       clearInterval(intervalId);
       if (channelRef.current) {
         channelRef.current.untrack();
@@ -83,7 +92,7 @@ export default function usePresence(userLocation, userName, avatarIndex) {
         channelRef.current = null;
       }
     };
-  }, [userLocation, userName, avatarIndex]);
+  }, []); // Solo se ejecuta una vez
 
   return otherUsers;
 }
