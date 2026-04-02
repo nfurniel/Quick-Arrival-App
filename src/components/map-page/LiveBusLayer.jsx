@@ -1,0 +1,149 @@
+// LiveBusLayer.jsx — Tracking del bus en tiempo real con ruta OSRM
+import React, { useEffect, useState, useRef } from 'react';
+import { Marker, Popup, Polyline, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import { getBusLocation } from '../../services/crtmService';
+import { liveBusIcon, trackingStopIcon } from './mapIcons';
+
+// Pedir ruta real por carretera usando OSRM (gratuito, sin API key)
+async function fetchRoute(fromLat, fromLng, toLat, toLng) {
+  try {
+    const url = `https://router.project-osrm.org/route/v1/driving/${fromLng},${fromLat};${toLng},${toLat}?overview=full&geometries=geojson`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const json = await res.json();
+    if (json.routes && json.routes.length > 0) {
+      // OSRM devuelve [lng, lat], Leaflet necesita [lat, lng]
+      return json.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+    }
+  } catch (e) {
+    console.error('Error obteniendo ruta OSRM:', e);
+  }
+  return null;
+}
+
+// Componente que muestra el bus moviéndose en tiempo real con ruta
+export default function LiveBusLayer({ selectedBus }) {
+  const [busLocations, setBusLocations] = useState([]);
+  const [routePath, setRoutePath] = useState([]);
+  const map = useMap();
+  const yaCentrado = useRef(false);
+
+  // Resetear cuando cambiamos de bus
+  useEffect(() => {
+    yaCentrado.current = false;
+    setBusLocations([]);
+    setRoutePath([]);
+  }, [selectedBus]);
+
+  // Pedir la ubicacion del bus cada 8 segundos
+  useEffect(() => {
+    if (!selectedBus) return;
+
+    let timeoutId;
+    let montado = true;
+
+    async function pedirUbicacion() {
+      try {
+        const ubicaciones = await getBusLocation(
+          selectedBus.codMode,
+          selectedBus.codLine,
+          selectedBus.direction,
+          selectedBus.codStop,
+          1,
+          selectedBus.busId
+        );
+
+        if (ubicaciones && ubicaciones.length > 0 && montado) {
+          setBusLocations(ubicaciones);
+
+          // Calcular ruta desde el bus hasta la parada
+          if (selectedBus.stopLat && selectedBus.stopLng) {
+            const ruta = await fetchRoute(
+              ubicaciones[0].latitude, ubicaciones[0].longitude,
+              selectedBus.stopLat, selectedBus.stopLng
+            );
+            if (ruta && montado) setRoutePath(ruta);
+          }
+
+          // Centrar el mapa para ver bus y parada la primera vez
+          if (!yaCentrado.current) {
+            yaCentrado.current = true;
+            if (selectedBus.stopLat && selectedBus.stopLng) {
+              const bounds = L.latLngBounds(
+                [ubicaciones[0].latitude, ubicaciones[0].longitude],
+                [selectedBus.stopLat, selectedBus.stopLng]
+              );
+              map.fitBounds(bounds.pad(0.3), { animate: true, duration: 1 });
+            } else {
+              map.setView([ubicaciones[0].latitude, ubicaciones[0].longitude], 15, { animate: true });
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Error obteniendo ubicacion del bus:", e);
+      } finally {
+        if (montado) {
+          timeoutId = setTimeout(pedirUbicacion, 8000);
+        }
+      }
+    }
+
+    pedirUbicacion();
+
+    return () => {
+      montado = false;
+      clearTimeout(timeoutId);
+    };
+  }, [selectedBus, map]);
+
+  const stopPos = selectedBus.stopLat && selectedBus.stopLng
+    ? [selectedBus.stopLat, selectedBus.stopLng]
+    : null;
+
+  return (
+    <>
+      {/* Ruta entre el bus y la parada */}
+      {routePath.length > 0 && (
+        <Polyline
+          positions={routePath}
+          pathOptions={{
+            color: '#3b82f6',
+            weight: 5,
+            opacity: 0.8,
+            dashArray: '12, 8',
+            lineCap: 'round',
+            lineJoin: 'round'
+          }}
+        />
+      )}
+
+      {/* Marcador de la parada destino */}
+      {stopPos && (
+        <Marker position={stopPos} icon={trackingStopIcon} zIndexOffset={900}>
+          <Popup>
+            <strong>{selectedBus.stopName}</strong>
+            <br />
+            Tu parada
+          </Popup>
+        </Marker>
+      )}
+
+      {/* Marcadores del bus */}
+      {busLocations.map((loc, idx) => (
+        <Marker
+          key={loc.vehicleId || idx}
+          position={[loc.latitude, loc.longitude]}
+          icon={liveBusIcon}
+          zIndexOffset={1000}
+        >
+          <Popup>
+            <strong>Línea {selectedBus.line} (En movimiento)</strong>
+            <br />
+            Destino: {selectedBus.destination}
+          </Popup>
+        </Marker>
+      ))}
+    </>
+  );
+}
