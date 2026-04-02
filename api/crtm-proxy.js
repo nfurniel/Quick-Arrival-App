@@ -8,15 +8,27 @@ export const config = {
 
 export default async function handler(request) {
   try {
-    // Reconstruir la URL del CRTM a partir de nuestra peticion
+    // Reconstruir la URL del CRTM a partir del query param "path"
+    // que Vercel pasa desde el rewrite: /api/crtm/(.*) -> /api/crtm-proxy?path=$1
     const url = new URL(request.url);
+    const path = url.searchParams.get('path');
 
-    let targetUrl = request.url;
-    const apiIndex = targetUrl.indexOf('/api/crtm/');
-    if (apiIndex !== -1) {
-      targetUrl = 'https://www.crtm.es/' + targetUrl.substring(apiIndex + 10);
+    let targetUrl;
+    if (path) {
+      // Viene del rewrite de Vercel con el path capturado
+      // Los query params originales llegan como params de la edge function
+      const otherParams = new URLSearchParams(url.searchParams);
+      otherParams.delete('path');
+      const qs = otherParams.toString();
+      targetUrl = 'https://www.crtm.es/' + path + (qs ? '?' + qs : '');
     } else {
-      targetUrl = targetUrl.replace(url.origin + '/api/crtm/', 'https://www.crtm.es/');
+      // Fallback: intentar extraer del path directo
+      const apiIndex = request.url.indexOf('/api/crtm/');
+      if (apiIndex !== -1) {
+        targetUrl = 'https://www.crtm.es/' + request.url.substring(apiIndex + 10);
+      } else {
+        targetUrl = request.url.replace(url.origin + '/api/crtm/', 'https://www.crtm.es/');
+      }
     }
 
     // Cabeceras para simular que la peticion viene de la web del CRTM
