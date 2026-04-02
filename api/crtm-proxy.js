@@ -41,11 +41,22 @@ export default async function handler(request) {
 
     console.log('[Proxy CRTM] Target URL:', targetUrl);
 
+    // Timeout de 8s para no depender del límite de Vercel (25s edge)
+    // Si CRTM no responde a tiempo, el frontend reintentará automáticamente
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+
     // Hacer la peticion real al CRTM
-    const crtmResponse = await fetch(targetUrl, {
-      method: 'GET',
-      headers: headers,
-    });
+    let crtmResponse;
+    try {
+      crtmResponse = await fetch(targetUrl, {
+        method: 'GET',
+        headers: headers,
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     console.log('[Proxy CRTM] Response status:', crtmResponse.status);
 
