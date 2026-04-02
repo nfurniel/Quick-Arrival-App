@@ -15,33 +15,22 @@ export async function emtLogin() {
     return tokenGuardado;
   }
 
-  // Credenciales del .env
-  const email = import.meta.env.VITE_EMT_EMAIL;
-  const password = import.meta.env.VITE_EMT_PASSWORD;
-  const clientId = import.meta.env.VITE_EMT_CLIENT_ID;
-  const passKey = import.meta.env.VITE_EMT_PASSKEY;
+  // Las credenciales las inyecta el proxy del servidor (emt-proxy.js)
+  // desde variables de entorno. No se envían desde el frontend.
 
   // Probar diferentes endpoints de login por si alguno falla
   const intentos = [
     {
       url: `${BASE_URL}/v2/mobilitylabs/user/login/`,
-      headers: { 'email': email, 'password': password },
-      nombre: 'v2 email+password',
+      nombre: 'v2',
     },
     {
       url: `${BASE_URL}/v1/mobilitylabs/user/login/`,
-      headers: { 'email': email, 'password': password },
-      nombre: 'v1 email+password',
+      nombre: 'v1',
     },
     {
       url: `${BASE_URL}/v3/mobilitylabs/user/login/`,
-      headers: { 'email': email, 'password': password },
-      nombre: 'v3 email+password',
-    },
-    {
-      url: `${BASE_URL}/v1/mobilitylabs/user/login/`,
-      headers: { 'X-ClientId': clientId, 'passKey': passKey },
-      nombre: 'v1 clientId+passKey',
+      nombre: 'v3',
     },
   ];
 
@@ -50,7 +39,6 @@ export async function emtLogin() {
       console.log(`EMT Login: Probando ${intento.nombre}...`);
       const response = await fetch(intento.url, {
         method: 'GET',
-        headers: intento.headers,
       });
 
       if (!response.ok) {

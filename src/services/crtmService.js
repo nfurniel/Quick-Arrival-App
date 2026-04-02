@@ -83,8 +83,8 @@ const CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutos
  * @param {number} attempt - Número de intento (0 = primer reintento)
  */
 function backoffDelay(attempt) {
-  const baseDelay = 2000; // 2 segundos
-  return baseDelay * Math.pow(2, attempt); // 2s, 4s, 8s...
+  const baseDelay = 800; // 800ms
+  return baseDelay * Math.pow(2, attempt); // 0.8s, 1.6s, 3.2s...
 }
 
 /**

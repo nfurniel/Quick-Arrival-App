@@ -1,21 +1,22 @@
 // Proxy para las peticiones a la API de EMT Madrid en produccion (Vercel Edge Function)
 // Necesario porque las peticiones directas a openapi.emtmadrid.es fallan por CORS
+// Las credenciales de login se inyectan desde variables de entorno del servidor
+// para evitar que los navegadores las pierdan al reenviar headers no estándar.
 
 export const config = {
   runtime: 'edge',
 };
 
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'accessToken, Content-Type',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+};
+
 export default async function handler(request) {
   // Responder preflight CORS
   if (request.method === 'OPTIONS') {
-    return new Response(null, {
-      status: 204,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'accessToken, email, password, X-ClientId, passKey, Content-Type',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      },
-    });
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
   }
 
   try {
@@ -31,13 +32,26 @@ export default async function handler(request) {
     console.log('[Proxy EMT] Target URL:', targetUrl);
     console.log('[Proxy EMT] Method:', request.method);
 
-    // Copiar las cabeceras relevantes (accessToken, email, password, etc.)
+    // Construir cabeceras para la petición a EMT
     const headers = new Headers();
-    const forwardHeaders = ['accesstoken', 'email', 'password', 'x-clientid', 'passkey', 'content-type'];
-    for (const h of forwardHeaders) {
-      const val = request.headers.get(h);
-      if (val) headers.set(h, val);
+
+    // Si es un endpoint de login, inyectar credenciales desde env vars del servidor
+    // (los navegadores no reenvían bien headers personalizados como "email"/"password")
+    if (path.includes('user/login')) {
+      headers.set('email', process.env.EMT_EMAIL || '');
+      headers.set('password', process.env.EMT_PASSWORD || '');
+      if (process.env.EMT_CLIENT_ID) headers.set('X-ClientId', process.env.EMT_CLIENT_ID);
+      if (process.env.EMT_PASSKEY) headers.set('passKey', process.env.EMT_PASSKEY);
+      console.log('[Proxy EMT] Login request — credenciales inyectadas desde env vars');
+    } else {
+      // Para peticiones normales, reenviar el accessToken del frontend
+      const accessToken = request.headers.get('accesstoken');
+      if (accessToken) headers.set('accessToken', accessToken);
     }
+
+    // Content-Type siempre se reenvía
+    const contentType = request.headers.get('content-type');
+    if (contentType) headers.set('Content-Type', contentType);
 
     // Leer body si es POST
     let body = null;
@@ -59,9 +73,7 @@ export default async function handler(request) {
       status: emtResponse.status,
       headers: {
         'Content-Type': emtResponse.headers.get('Content-Type') || 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'accessToken, email, password, X-ClientId, passKey, Content-Type',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        ...CORS_HEADERS,
       },
     });
 
