@@ -1,9 +1,9 @@
 // crtmService.js — Servicio para obtener paradas de bus de la Comunidad de Madrid
 // Fuente: CRTM (Consorcio Regional de Transportes de Madrid) — Datos Abiertos ArcGIS
-// Para paradas urbanas (EMT): usa la API oficial de EMT (más fiable)
-// Para paradas interurbanas: usa el widget del CRTM (menos fiable)
+// Para paradas urbanas (EMT): usa la API oficial de EMT
+// Para paradas interurbanas: usa el widget del CRTM
 
-import { getEMTArrivals } from './emtService';
+import { getEMTArrivals, getEMTBusLocations } from './emtService';
 
 const ARCGIS_BASE = 'https://services5.arcgis.com/UxADft6QPcvFyDU1/arcgis/rest/services';
 
@@ -97,28 +97,15 @@ function backoffDelay(attempt) {
  * @returns {Object} { arrivals: Array, stale: boolean, cachedAt: Date|null, error: boolean }
  */
 export async function getStopTimes(codStop, signal, maxRetries = 3) {
-  // 0. Para paradas urbanas (EMT, modo 6), usar la API oficial de EMT primero
-  //    Es mucho más fiable que el widget del CRTM
+  // Para paradas urbanas (EMT, modo 6), usar la API oficial de EMT
   if (codStop.startsWith('6_')) {
-    const emtStopId = codStop.replace('6_', ''); // Extraer ID numérico
+    const emtStopId = codStop.replace('6_', '');
     console.log(`[EMT] Parada urbana detectada (${codStop}), usando API de EMT...`);
-    try {
-      const emtResult = await getEMTArrivals(emtStopId, signal);
-      if (!emtResult.error && emtResult.arrivals.length > 0) {
-        // Guardar en caché también
-        stopTimesCache.set(codStop, { data: emtResult.arrivals, timestamp: Date.now() });
-        return emtResult;
-      }
-      // Si EMT no devuelve datos, intentar con CRTM como fallback
-      if (!emtResult.error) {
-        console.log(`[EMT] Sin llegadas, probando CRTM como fallback...`);
-      } else {
-        console.warn(`[EMT] Error, probando CRTM como fallback...`);
-      }
-    } catch (e) {
-      if (e.name === 'AbortError') throw e;
-      console.warn(`[EMT] Excepción, probando CRTM como fallback:`, e.message);
+    const emtResult = await getEMTArrivals(emtStopId, signal);
+    if (!emtResult.error) {
+      stopTimesCache.set(codStop, { data: emtResult.arrivals, timestamp: Date.now() });
     }
+    return emtResult;
   }
 
   // 1. Comprobar caché fresco (< 2 min)
@@ -188,9 +175,9 @@ export async function getStopTimes(codStop, signal, maxRetries = 3) {
         };
       }).filter(t => t.minutes >= 0).slice(0, 6);
 
-      // ✅ Éxito — Guardar en caché
+      //  Éxito — Guardar en caché
       stopTimesCache.set(codStop, { data: arrivals, timestamp: Date.now() });
-      console.log(`[CRTM] ✅ Datos frescos obtenidos para ${codStop} (${arrivals.length} llegadas)`);
+      console.log(`[CRTM]  Datos frescos obtenidos para ${codStop} (${arrivals.length} llegadas)`);
       return { arrivals, stale: false, cachedAt: null, error: false };
 
     } catch (error) {
@@ -227,7 +214,21 @@ export async function getStopTimes(codStop, signal, maxRetries = 3) {
  * @param {number} [maxRetries=1] - Número máximo de reintentos
  * @returns {Array} Array de ubicaciones con latitud y longitud
  */
-export async function getBusLocation(mode, codLine, direction, codStop, maxRetries = 1) {
+export async function getBusLocation(mode, codLine, direction, codStop, maxRetries = 1, busId) {
+  // Para buses urbanos (EMT), usar la API de EMT
+  if (String(mode) === '6') {
+    const emtStopId = codStop.replace('6_', '');
+    console.log(`[EMT Location] Usando API de EMT para localizar bus ${busId || codLine} en parada ${emtStopId}...`);
+    try {
+      const locations = await getEMTBusLocations(emtStopId, codLine, busId);
+      return locations;
+    } catch (e) {
+      console.error('[EMT Location] Error:', e.message);
+      return [];
+    }
+  }
+
+  // Para interurbanos, usar CRTM
   let lastError = null;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
