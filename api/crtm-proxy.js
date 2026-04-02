@@ -39,19 +39,26 @@ export default async function handler(request) {
     headers.set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
     headers.set('Accept-Language', 'es-ES,es;q=0.9');
 
+    console.log('[Proxy CRTM] Target URL:', targetUrl);
+
     // Hacer la peticion real al CRTM
     const crtmResponse = await fetch(targetUrl, {
       method: 'GET',
       headers: headers,
     });
 
-    // Devolver la respuesta con los headers CORS para que el navegador no la bloquee
-    const responseHeaders = new Headers(crtmResponse.headers);
-    responseHeaders.set('Access-Control-Allow-Origin', '*');
+    console.log('[Proxy CRTM] Response status:', crtmResponse.status);
 
-    return new Response(crtmResponse.body, {
+    // Leer el body como texto para evitar problemas con Content-Encoding
+    const body = await crtmResponse.text();
+
+    // Devolver la respuesta con los headers CORS para que el navegador no la bloquee
+    return new Response(body, {
       status: crtmResponse.status,
-      headers: responseHeaders,
+      headers: {
+        'Content-Type': crtmResponse.headers.get('Content-Type') || 'application/json',
+        'Access-Control-Allow-Origin': '*',
+      },
     });
 
   } catch (error) {
