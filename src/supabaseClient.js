@@ -4,4 +4,40 @@ const supabaseUrl = "https://tumoqeuueqbvfstdhdmn.supabase.co";
 const supabaseAnonKey =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR1bW9xZXV1ZXFidmZzdGRoZG1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAzOTcwMTIsImV4cCI6MjA4NTk3MzAxMn0.3WtuEz7LwxyYq9V4EIZm7DXFuQlb_4z-J5y5QYyD6zA";
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Storage personalizado que alterna entre localStorage y sessionStorage
+// según la preferencia de "Recordarme" del usuario
+const STORAGE_KEY_PREFIX = "sb-tumoqeuueqbvfstdhdmn-auth-token";
+
+const customStorage = {
+  getItem: (key) => {
+    return localStorage.getItem(key) || sessionStorage.getItem(key);
+  },
+  setItem: (key, value) => {
+    const useSession = sessionStorage.getItem("qa-session-only") === "true";
+    if (useSession) {
+      sessionStorage.setItem(key, value);
+      localStorage.removeItem(key);
+    } else {
+      localStorage.setItem(key, value);
+      sessionStorage.removeItem(key);
+    }
+  },
+  removeItem: (key) => {
+    localStorage.removeItem(key);
+    sessionStorage.removeItem(key);
+  },
+};
+
+export const setRememberSession = (remember) => {
+  if (remember) {
+    sessionStorage.removeItem("qa-session-only");
+  } else {
+    sessionStorage.setItem("qa-session-only", "true");
+  }
+};
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    storage: customStorage,
+  },
+});

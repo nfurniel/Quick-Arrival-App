@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { supabase } from "../../../supabaseClient.js";
+import { supabase, setRememberSession } from "../../../supabaseClient.js";
 import { useNavigate } from "react-router-dom";
 import "./AuthModal.css";
 
@@ -35,6 +35,8 @@ export default function AuthModal({ isOpen, onClose }) {
           setSuccess(true);
         }
       } else if (isLogin) {
+        // Configurar persistencia según "Recordarme"
+        setRememberSession(rememberMe);
         // Inicio de sesión
         const { data, error: signInError } = await supabase.auth.signInWithPassword({
           email,
@@ -152,7 +154,9 @@ export default function AuthModal({ isOpen, onClose }) {
                   <label htmlFor="auth-name">Nombre de usuario</label>
                   <input
                     id="auth-name"
+                    name="name"
                     type="text"
+                    autoComplete="name"
                     placeholder="Tu nombre en la app"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
@@ -165,7 +169,9 @@ export default function AuthModal({ isOpen, onClose }) {
                 <label htmlFor="auth-email">Correo Email</label>
                 <input
                   id="auth-email"
+                  name="email"
                   type="email"
+                  autoComplete="email"
                   placeholder="tu@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -178,7 +184,9 @@ export default function AuthModal({ isOpen, onClose }) {
                   <label htmlFor="auth-password">Contraseña</label>
                   <input
                     id="auth-password"
+                    name="password"
                     type="password"
+                    autoComplete={isLogin ? "current-password" : "new-password"}
                     placeholder={isLogin ? "Tu contraseña" : "Mínimo 6 caracteres"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
