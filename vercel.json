@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/emt/(.*)",
-      "destination": "https://openapi.emtmadrid.es/v1/$1"
+      "destination": "/api/emt-proxy?path=$1"
     },
     {
       "source": "/api/crtm/(.*)",
