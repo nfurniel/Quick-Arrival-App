@@ -1,4 +1,5 @@
 import "./AboutSection.css";
+import appPreview from "../../../assets/app-preview.svg";
 
 export default function AboutSection() {
     return (
@@ -18,10 +19,7 @@ export default function AboutSection() {
                     </div>
                 </div>
                 <div className="about-hero-image-wrapper">
-                    {/* Placeholder para la imagen de la sección About. Ej: Un móvil mostrando el mapa en tiempo real */}
-                    <div className="about-image-placeholder">
-                        <span className="placeholder-text">IMAGEN DEL MAPA/APP AQUÍ</span>
-                    </div>
+                    <img src={appPreview} alt="Maqueta de Quick Arrival mostrando el mapa en tiempo real" className="about-hero-image" draggable="false"/>
                 </div>
             </div>
         </section>
