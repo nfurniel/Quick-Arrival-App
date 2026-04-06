@@ -55,8 +55,12 @@ export default function StopBottomSheet({ stop, isDarkMode, onClose, onSelectBus
     }
   }, [stop]);
 
-  // ── Drag con Pointer Events (funciona con ratón y dedo) ──
+  const scrollAreaRef = useRef(null);
+
+  // ── Drag con Pointer Events en el contenedor completo ──
   const handlePointerDown = (e) => {
+    // En expanded, si el toque empieza dentro del área de scroll → no interceptar
+    if (expanded && scrollAreaRef.current?.contains(e.target)) return;
     dragStart.current = { y: e.clientY, expanded };
     setIsDragging(true);
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -102,15 +106,13 @@ export default function StopBottomSheet({ stop, isDarkMode, onClose, onSelectBus
     <div
       className={`stop-bottom-sheet ${isDarkMode ? 'dark' : ''} ${isDragging ? 'dragging' : ''}`}
       style={{ transform: baseTransform, transition: isDragging ? 'none' : undefined }}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
     >
-      {/* Zona de arrastre */}
-      <div
-        className="sheet-drag-area"
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}
-      >
+      {/* Handle visual */}
+      <div className="sheet-drag-area">
         <div className="sheet-handle" />
       </div>
 
@@ -133,7 +135,7 @@ export default function StopBottomSheet({ stop, isDarkMode, onClose, onSelectBus
       )}
 
       {/* Contenido scrollable (tiempos) */}
-      <div className="sheet-scroll-area">
+      <div className="sheet-scroll-area" ref={scrollAreaRef}>
 
         {loading && (
           <div className="sheet-loading">
