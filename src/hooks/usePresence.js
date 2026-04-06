@@ -22,9 +22,10 @@ export default function usePresence(userLocation, userName, avatarIndex) {
   nameRef.current = userName;
   avatarRef.current = avatarIndex;
 
-  // Crear el canal una sola vez
+  // Crear el canal una sola vez, cuando llega la ubicacion
   useEffect(() => {
     if (!userLocation) return;
+    if (channelRef.current) return; // canal ya creado, no recrear
 
     let intervalId;
     let montado = true;
@@ -92,7 +93,7 @@ export default function usePresence(userLocation, userName, avatarIndex) {
         channelRef.current = null;
       }
     };
-  }, []); // Solo se ejecuta una vez
+  }, [userLocation]); // Se activa cuando llega la ubicacion por primera vez
 
   return otherUsers;
 }

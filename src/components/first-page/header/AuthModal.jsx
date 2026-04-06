@@ -46,7 +46,8 @@ export default function AuthModal({ isOpen, onClose }) {
         if (signInError) {
           setError(signInError.message);
         } else {
-          // Si el login es exitoso, cerramos el modal y redirigimos
+          // Cerrar cualquier otra sesion activa de esta cuenta
+          await supabase.auth.signOut({ scope: 'others' });
           handleClose();
           navigate("/mapa");
         }

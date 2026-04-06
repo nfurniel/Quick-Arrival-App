@@ -7,7 +7,7 @@ import icon3 from "../../../assets/icono-bus3.jpg";
 
 export default function Features() {
     return (
-        <section className="features-container">
+        <section id="funcionalidades" className="features-container">
             <h2 className="features-title">Una solución pensada para ti</h2>
             <div className="features-grid">
                 <SpotlightCard className="feature-card" spotlightColor="rgba(251, 32, 73, 0.15)">

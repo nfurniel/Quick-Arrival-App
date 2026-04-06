@@ -1,10 +1,12 @@
 import "./header.css";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import CardNav from "./CardNav.jsx";
 import AuthModal from "./AuthModal.jsx";
 import logo from "../../../assets/logo-bus.png";
 export default function Header() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const navigate = useNavigate();
 
   const items = [
     {
@@ -18,23 +20,23 @@ export default function Header() {
       ],
     },
     {
-      label: "Mapa",
+      label: "App",
       bgColor: "#F8FAFC",
       textColor: "#1E293B",
       accentColor: "#DC2626",
       links: [
-        { label: "Paradas", ariaLabel: "Paradas de autobús" },
-        { label: "Rutas", ariaLabel: "Rutas" },
+        { label: "Funcionalidades", ariaLabel: "Funcionalidades", href: "#funcionalidades" },
+        { label: "Tecnologías", ariaLabel: "Tecnologías", href: "#tecnologias" },
       ],
     },
     {
-      label: "Ayuda",
+      label: "Acceso",
       bgColor: "#FFFFFF",
       textColor: "#1E293B",
       accentColor: "#DC2626",
       links: [
-        { label: "Preguntas frecuentes", ariaLabel: "Preguntas frecuentes" },
-        { label: "Contacto", ariaLabel: "Contacto" },
+        { label: "Iniciar sesión", ariaLabel: "Iniciar sesión", onClick: () => setIsModalOpen(true) },
+        { label: "Ir al mapa", ariaLabel: "Ir al mapa", onClick: () => navigate("/mapa") },
       ],
     },
   ];
