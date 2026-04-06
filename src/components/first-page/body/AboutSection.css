@@ -98,23 +98,17 @@
     width: 100%;
     max-width: 500px;
 
-    .about-image-placeholder {
+    .about-hero-image {
         width: 100%;
-        aspect-ratio: 4/5;
-        background: linear-gradient(135deg, #f0f0f0 0%, #e0e0e0 100%);
-        border: 2px dashed #cccccc;
-        border-radius: 20px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+        max-width: 420px;
+        height: auto;
+        display: block;
+        user-select: none;
+        filter: drop-shadow(0 24px 48px rgba(0, 0, 0, 0.14));
+        transition: transform 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
 
-        .placeholder-text {
-            color: #999999;
-            font-weight: 600;
-            font-size: 1.2rem;
-            text-align: center;
-            padding: 2rem;
+        &:hover {
+            transform: translateY(-6px) rotate(1deg);
         }
     }
 }

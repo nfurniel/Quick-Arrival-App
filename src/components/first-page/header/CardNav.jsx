@@ -194,18 +194,24 @@ const CardNav = ({
                     href={lnk.href || "#"}
                     aria-label={lnk.ariaLabel}
                     onClick={(e) => {
-                      if (lnk.href && lnk.href.startsWith("#")) {
+                      const closeMenu = () => {
+                        setIsHamburgerOpen(false);
+                        const tl = tlRef.current;
+                        if (tl) {
+                          tl.eventCallback("onReverseComplete", () => setIsExpanded(false));
+                          tl.reverse();
+                        }
+                      };
+                      if (lnk.onClick) {
+                        e.preventDefault();
+                        closeMenu();
+                        lnk.onClick();
+                      } else if (lnk.href && lnk.href.startsWith("#")) {
                         e.preventDefault();
                         const target = document.querySelector(lnk.href);
                         if (target) {
                           target.scrollIntoView({ behavior: "smooth" });
-                          // Close the menu after clicking
-                          setIsHamburgerOpen(false);
-                          const tl = tlRef.current;
-                          if (tl) {
-                            tl.eventCallback("onReverseComplete", () => setIsExpanded(false));
-                            tl.reverse();
-                          }
+                          closeMenu();
                         }
                       }
                     }}

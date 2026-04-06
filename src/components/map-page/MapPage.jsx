@@ -12,6 +12,7 @@ import LocateControl from './LocateControl';
 import BusStopsLayer from './BusStopsLayer';
 import LiveBusLayer from './LiveBusLayer';
 import HighlightedStopsLayer from './HighlightedStopsLayer';
+import StopBottomSheet from './StopBottomSheet';
 import usePresence from '../../hooks/usePresence';
 // Importar mapIcons para que se ejecute el fix de Leaflet
 import './mapIcons';
@@ -41,6 +42,7 @@ export default function MapPage() {
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [busSearchOpen, setBusSearchOpen] = useState(true);
   const [highlightedStops, setHighlightedStops] = useState([]);
+  const [selectedStop, setSelectedStop] = useState(null);
   const navigate = useNavigate();
 
   // Presencia: ver otros usuarios en el mapa
@@ -173,12 +175,22 @@ export default function MapPage() {
 
         {/* Paradas de bus (ocultas durante tracking) */}
         {!selectedBus && (
-          <BusStopsLayer isDarkMode={isDarkMode} onSelectBus={setSelectedBus} selectedBus={selectedBus} />
+          <BusStopsLayer
+            isDarkMode={isDarkMode}
+            onSelectBus={setSelectedBus}
+            onSelectStop={setSelectedStop}
+            selectedBus={selectedBus}
+          />
         )}
 
         {/* Paradas destacadas por busqueda (ocultas durante tracking) */}
         {highlightedStops.length > 0 && !selectedBus && (
-          <HighlightedStopsLayer stops={highlightedStops} isDarkMode={isDarkMode} onSelectBus={setSelectedBus} />
+          <HighlightedStopsLayer
+            stops={highlightedStops}
+            isDarkMode={isDarkMode}
+            onSelectBus={setSelectedBus}
+            onSelectStop={setSelectedStop}
+          />
         )}
       </MapContainer>
 
@@ -221,6 +233,16 @@ export default function MapPage() {
             <p>Parada: {selectedBus.stopName}</p>
           </div>
         </div>
+      )}
+
+      {/* Bottom sheet de parada seleccionada (solo móvil) */}
+      {selectedStop && window.innerWidth < 768 && (
+        <StopBottomSheet
+          stop={selectedStop}
+          isDarkMode={isDarkMode}
+          onClose={() => setSelectedStop(null)}
+          onSelectBus={(bus) => { setSelectedBus(bus); setSelectedStop(null); }}
+        />
       )}
 
       {/* Modal de busqueda de bus */}

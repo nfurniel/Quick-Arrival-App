@@ -1,0 +1,191 @@
+// StopBottomSheet.jsx — Panel inferior deslizable con info de la parada
+// Se abre al hacer click en una parada, se puede arrastrar hacia arriba para expandir
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { getStopTimes } from '../../services/crtmService';
+import './StopBottomSheet.css';
+
+const PEEK_HEIGHT = 210; // px visibles en estado colapsado
+
+export default function StopBottomSheet({ stop, isDarkMode, onClose, onSelectBus }) {
+  const [expanded, setExpanded] = useState(false);
+  const [arrivals, setArrivals] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+  const [stale, setStale] = useState(false);
+  const [cachedAt, setCachedAt] = useState(null);
+  const [dragOffset, setDragOffset] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const dragStart = useRef(null);
+  const abortRef = useRef(null);
+
+  // Reset y cargar datos cuando cambia la parada
+  useEffect(() => {
+    if (!stop) return;
+    setExpanded(false);
+    setDragOffset(0);
+    setArrivals(null);
+    setError(false);
+    setStale(false);
+    fetchArrivals();
+    return () => abortRef.current?.abort();
+  }, [stop?.codStop]);
+
+  const fetchArrivals = useCallback(async () => {
+    if (!stop) return;
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    setLoading(true);
+    setError(false);
+
+    try {
+      const result = await getStopTimes(stop.codStop, controller.signal);
+      if (controller.signal.aborted) return;
+      setArrivals(result.arrivals);
+      setStale(result.stale);
+      setCachedAt(result.cachedAt);
+      setError(result.error);
+    } catch (e) {
+      if (e.name === 'AbortError') return;
+      if (!controller.signal.aborted) { setArrivals([]); setError(true); }
+    } finally {
+      if (!controller.signal.aborted) setLoading(false);
+    }
+  }, [stop]);
+
+  // ── Drag con Pointer Events (funciona con ratón y dedo) ──
+  const handlePointerDown = (e) => {
+    dragStart.current = { y: e.clientY, expanded };
+    setIsDragging(true);
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e) => {
+    if (!dragStart.current) return;
+    const delta = e.clientY - dragStart.current.y;
+    if (dragStart.current.expanded) {
+      setDragOffset(Math.max(0, Math.min(delta, 250)));
+    } else {
+      setDragOffset(Math.max(-250, Math.min(delta, 150)));
+    }
+  };
+
+  const handlePointerUp = (e) => {
+    if (!dragStart.current) return;
+    const delta = e.clientY - dragStart.current.y;
+    setIsDragging(false);
+    setDragOffset(0);
+
+    if (!dragStart.current.expanded) {
+      if (delta < -60) setExpanded(true);
+      else if (delta > 70) onClose();
+    } else {
+      if (delta > 120) setExpanded(false);
+    }
+    dragStart.current = null;
+  };
+
+  if (!stop) return null;
+
+  const lines = stop.lines || [];
+  const esInterurbano = stop.codStop?.startsWith('8_');
+  const minutosCacheados = cachedAt ? Math.round((Date.now() - cachedAt.getTime()) / 60000) : 0;
+
+  // Calcular transform según estado
+  const baseTransform = expanded
+    ? `translateY(${Math.max(0, dragOffset)}px)`
+    : `translateY(calc(100% - ${PEEK_HEIGHT}px + ${Math.max(0, dragOffset)}px))`;
+
+  return (
+    <div
+      className={`stop-bottom-sheet ${isDarkMode ? 'dark' : ''} ${isDragging ? 'dragging' : ''}`}
+      style={{ transform: baseTransform, transition: isDragging ? 'none' : undefined }}
+    >
+      {/* Zona de arrastre */}
+      <div
+        className="sheet-drag-area"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+      >
+        <div className="sheet-handle" />
+      </div>
+
+      {/* Cabecera */}
+      <div className="sheet-header">
+        <div className="sheet-stop-info">
+          <h3 className="sheet-stop-name">{stop.name}</h3>
+          <span className="sheet-stop-type">{stop.typeLabel}</span>
+        </div>
+        <button className="sheet-close-btn" onClick={onClose} aria-label="Cerrar">✕</button>
+      </div>
+
+      {/* Líneas que pasan por la parada */}
+      {lines.length > 0 && (
+        <div className="sheet-lines">
+          {lines.map((line, i) => (
+            <span key={i} className="sheet-line-badge">{line}</span>
+          ))}
+        </div>
+      )}
+
+      {/* Contenido scrollable (tiempos) */}
+      <div className="sheet-scroll-area">
+
+        {loading && (
+          <div className="sheet-loading">
+            <span className="sheet-spinner" />
+            Cargando tiempos...
+          </div>
+        )}
+
+        {error && !loading && (
+          <div className="sheet-error">
+            <p>{esInterurbano ? 'Servidor CRTM no disponible' : 'No se pudieron obtener los tiempos'}</p>
+            <button className="sheet-retry-btn" onClick={fetchArrivals}>Reintentar</button>
+          </div>
+        )}
+
+        {arrivals?.length === 0 && !loading && !error && (
+          <div className="sheet-empty">Sin servicio en este momento</div>
+        )}
+
+        {arrivals?.length > 0 && !error && (
+          <>
+            {stale && (
+              <div className="sheet-stale">
+                Datos de hace {minutosCacheados} min · API no disponible
+              </div>
+            )}
+
+            <div className="sheet-arrivals-list">
+              {arrivals.map((a, i) => (
+                <div
+                  key={i}
+                  className="sheet-arrival-row"
+                  onClick={() => {
+                    onSelectBus({ ...a, codStop: stop.codStop, stopName: stop.name, stopLat: stop.lat, stopLng: stop.lng });
+                    onClose();
+                  }}
+                >
+                  <div className="sheet-arrival-line">{a.line}</div>
+                  <span className="sheet-arrival-dest">{a.destination}</span>
+                  <span className={`sheet-arrival-time ${a.minutes === 0 ? 'now' : ''}`}>
+                    {a.minutes === 0 ? 'YA' : `${a.minutes} min`}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <button className="sheet-refresh-btn" onClick={fetchArrivals}>
+              ↻ Actualizar
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}

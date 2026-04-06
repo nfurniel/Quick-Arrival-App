@@ -19,6 +19,9 @@ function App() {
       if (event === 'SIGNED_IN') {
         navigate('/mapa');
       }
+      if (event === 'SIGNED_OUT') {
+        navigate('/');
+      }
     });
 
     return () => {

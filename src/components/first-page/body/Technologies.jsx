@@ -1,32 +1,35 @@
 import "./Technologies.css";
 import SpotlightCard from "./SpotlightCard.jsx";
+import { FaReact } from "react-icons/fa";
+import { SiSupabase, SiLeaflet } from "react-icons/si";
+import { MdDirectionsBus } from "react-icons/md";
 
 export default function Technologies() {
     return (
-        <section className="tech-container">
+        <section id="tecnologias" className="tech-container">
             <h2 className="tech-title">Tecnologías de Vanguardia</h2>
             <p className="tech-subtitle">Quick Arrival está construido bajo un patrón de arquitectura Headless, garantizando velocidad extrema y precisión milimétrica.</p>
 
             <div className="tech-grid">
                 <SpotlightCard className="tech-card" spotlightColor="rgba(251, 32, 73, 0.2)">
-                    <div className="icon-placeholder"></div>
-                    <h3>Frontend Moderno</h3>
-                    <p>Desarrollado en React, asegurando una interfaz visual fluida, mapas interactivos ultrarrápidos y experiencia de App Nativa (PWA).</p>
+                    <div className="icon-placeholder"><FaReact className="tech-icon" /></div>
+                    <h3>React + Vite</h3>
+                    <p>Interfaz construida en React con Vite, consiguiendo tiempos de carga mínimos y una experiencia fluida sin recargas de página.</p>
                 </SpotlightCard>
                 <SpotlightCard className="tech-card" spotlightColor="rgba(251, 32, 73, 0.2)">
-                    <div className="icon-placeholder"></div>
-                    <h3>Backend Robusto</h3>
-                    <p>Potenciado por Laravel para procesar miles de coordenadas GPS en tiempo real, conectando pasajeros sin interrupciones ni lag.</p>
+                    <div className="icon-placeholder"><SiSupabase className="tech-icon" /></div>
+                    <h3>Supabase</h3>
+                    <p>Gestión de usuarios, autenticación segura y presencia en tiempo real mediante Supabase Realtime, sin infraestructura propia.</p>
                 </SpotlightCard>
                 <SpotlightCard className="tech-card" spotlightColor="rgba(251, 32, 73, 0.2)">
-                    <div className="icon-placeholder"></div>
-                    <h3>Google Maps API</h3>
-                    <p>Integración oficial para trazado de rutas, visualización de tráfico y sincronización geolocalizada perfecta al segundo.</p>
+                    <div className="icon-placeholder"><SiLeaflet className="tech-icon" /></div>
+                    <h3>Leaflet + CartoDB</h3>
+                    <p>Mapas interactivos open-source con capas vectoriales de CartoDB, sin costes de API y con total libertad de personalización.</p>
                 </SpotlightCard>
                 <SpotlightCard className="tech-card" spotlightColor="rgba(251, 32, 73, 0.2)">
-                    <div className="icon-placeholder"></div>
-                    <h3>OpenData EMT</h3>
-                    <p>Conexión directa con la base de datos de transportes de Madrid para obtener los paraderos, rutas y trayectos oficiales.</p>
+                    <div className="icon-placeholder"><MdDirectionsBus className="tech-icon" /></div>
+                    <h3>APIs de Transporte</h3>
+                    <p>Datos en tiempo real directamente desde la API oficial de la EMT Madrid y el CRTM para autobuses, metro y Cercanías.</p>
                 </SpotlightCard>
             </div>
         </section>
