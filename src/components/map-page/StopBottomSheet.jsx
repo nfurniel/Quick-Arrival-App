@@ -159,7 +159,7 @@ export default function StopBottomSheet({ stop, isDarkMode, onClose, onSelectBus
           <>
             {stale && (
               <div className="sheet-stale">
-                Datos de hace {minutosCacheados} min · API no disponible
+                Última actualización hace {minutosCacheados} min
               </div>
             )}
 

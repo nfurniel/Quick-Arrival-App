@@ -165,14 +165,14 @@ function BusStopPopup({ stopName, stopType, lines, codStop, stopLat, stopLng, on
       )}
       <div className="bus-arrivals-section">
         <span className="bus-arrivals-title">Próximos buses:</span>
-        {datosAntiguos && <div className="bus-stale-notice">Datos de hace {minutosCacheados} min (API no disponible)</div>}
+        {datosAntiguos && <div className="bus-stale-notice">Última actualización hace {minutosCacheados} min</div>}
         {cargando && <div className="bus-arrivals-loading">Cargando...</div>}
         {hayError && !cargando && (
           <div className="bus-arrivals-error">
             {servidorCaido && esInterurbano ? (
-              <><span>Servidor CRTM no disponible</span><span className="bus-error-hint">Vuelve a intentarlo en unos segundos.</span></>
+              <><span>Información no disponible ahora mismo</span><span className="bus-error-hint">Vuelve a intentarlo en unos segundos.</span></>
             ) : (
-              <span>No se pudo obtener los tiempos</span>
+              <span>No hay información disponible</span>
             )}
             <button className="bus-retry-btn" onClick={(e) => { e.stopPropagation(); pedirTiempos(); }}>Reintentar</button>
           </div>
