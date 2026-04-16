@@ -1,6 +1,6 @@
 // MapPage.jsx — Componente principal del mapa
-import React, { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import React, { useEffect, useRef, useState } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { useNavigate } from 'react-router-dom';
@@ -14,6 +14,22 @@ import LiveBusLayer from './LiveBusLayer';
 import HighlightedStopsLayer from './HighlightedStopsLayer';
 import StopBottomSheet from './StopBottomSheet';
 import usePresence from '../../hooks/usePresence';
+import { loadFavourites, addFavourite, removeFavourite } from '../../services/favoritesService';
+import FavouriteModal from './FavouriteModal';
+import FavouritePopupLayer from './FavouritePopupLayer';
+
+// Componente interno para controlar el mapa desde fuera del MapContainer
+function MapController({ flyToTarget }) {
+  const map = useMap();
+  const prevTarget = useRef(null);
+  useEffect(() => {
+    if (flyToTarget && flyToTarget !== prevTarget.current) {
+      prevTarget.current = flyToTarget;
+      map.flyTo([flyToTarget.lat, flyToTarget.lng], 17, { duration: 1 });
+    }
+  }, [flyToTarget, map]);
+  return null;
+}
 // Importar mapIcons para que se ejecute el fix de Leaflet
 import './mapIcons';
 
@@ -43,6 +59,9 @@ export default function MapPage() {
   const [busSearchOpen, setBusSearchOpen] = useState(true);
   const [highlightedStops, setHighlightedStops] = useState([]);
   const [selectedStop, setSelectedStop] = useState(null);
+  const [favourites, setFavourites] = useState([]);
+  const [flyToTarget, setFlyToTarget] = useState(null);
+  const [favModal, setFavModal] = useState(null); // { stopId, stopName }
   const navigate = useNavigate();
 
   // Presencia: ver otros usuarios en el mapa
@@ -65,6 +84,72 @@ export default function MapPage() {
     }
     loadUser();
   }, []);
+
+  // Cargar favoritos al montar
+  useEffect(() => {
+    loadFavourites().then(setFavourites);
+  }, []);
+
+  // Toggle favorito para la parada seleccionada
+  // Desktop: handleToggleFavourite(stopId, stopName)
+  // Móvil:   handleToggleFavourite(stopName) ← stopId viene de selectedStop
+  const handleToggleFavourite = async (stopIdOrName, stopNameFromDesktop) => {
+    let id, stopName;
+    if (typeof stopIdOrName === 'number') {
+      id = stopIdOrName;
+      stopName = stopNameFromDesktop;
+    } else {
+      id = selectedStop?.stopId;
+      stopName = stopIdOrName;
+    }
+    if (!id) return;
+    // Recargar desde servidor para evitar duplicados por estado desactualizado
+    const current = await loadFavourites();
+    setFavourites(current);
+    const esFav = current.some(f => f.stopId === id);
+    if (esFav) {
+      await removeFavourite(id);
+      loadFavourites().then(setFavourites);
+    } else {
+      setFavModal({ stopId: id, stopName: stopName || '' });
+    }
+  };
+
+  const handleFavModalSave = async (alias) => {
+    if (!favModal) return;
+    await addFavourite(favModal.stopId, alias);
+    const updated = await loadFavourites();
+    setFavourites(updated);
+    setFavModal(null);
+  };
+
+  const handleRemoveFavourite = async (stopId) => {
+    await removeFavourite(stopId);
+    const updated = await loadFavourites();
+    setFavourites(updated);
+  };
+
+  // Abrir parada desde favoritos (sidebar)
+  const [desktopFavStop, setDesktopFavStop] = useState(null);
+
+  const handleSelectFavourite = (fav) => {
+    setFlyToTarget({ lat: fav.lat, lng: fav.lng });
+    if (window.innerWidth < 768) {
+      // Móvil: bottom sheet
+      setSelectedStop({
+        codStop: fav.codStop,
+        name: fav.name,
+        typeLabel: fav.typeLabel,
+        lines: fav.lines,
+        lat: fav.lat,
+        lng: fav.lng,
+        stopId: fav.stopId,
+      });
+    } else {
+      // Desktop: popup de Leaflet sobre el marcador
+      setDesktopFavStop(fav);
+    }
+  };
 
   // Icono del usuario (avatar seleccionado)
   const userIcon = new L.Icon({
@@ -135,6 +220,13 @@ export default function MapPage() {
         className="leaflet-map-wrapper"
         zoomControl={false}
       >
+        <MapController flyToTarget={flyToTarget} />
+        <FavouritePopupLayer
+          stop={desktopFavStop}
+          isDarkMode={isDarkMode}
+          onSelectBus={setSelectedBus}
+          onClose={() => setDesktopFavStop(null)}
+        />
         {userLocation && <LocateControl position={userLocation} />}
 
         <TileLayer
@@ -180,6 +272,8 @@ export default function MapPage() {
             onSelectBus={setSelectedBus}
             onSelectStop={setSelectedStop}
             selectedBus={selectedBus}
+            favourites={favourites}
+            onToggleFavourite={handleToggleFavourite}
           />
         )}
 
@@ -209,6 +303,9 @@ export default function MapPage() {
         greeting={greeting}
         onLogout={handleLogout}
         onSearchBus={() => { setSidebarOpen(false); setBusSearchOpen(true); }}
+        favourites={favourites}
+        onSelectFavourite={handleSelectFavourite}
+        onRemoveFavourite={handleRemoveFavourite}
       />
 
       {/* Boton para quitar paradas destacadas */}
@@ -242,6 +339,18 @@ export default function MapPage() {
           isDarkMode={isDarkMode}
           onClose={() => setSelectedStop(null)}
           onSelectBus={(bus) => { setSelectedBus(bus); setSelectedStop(null); }}
+          isFavourite={selectedStop ? favourites.some(f => f.stopId === selectedStop.stopId) : false}
+          onToggleFavourite={handleToggleFavourite}
+        />
+      )}
+
+      {/* Modal para nombrar favorito */}
+      {favModal && (
+        <FavouriteModal
+          stopName={favModal.stopName}
+          isDarkMode={isDarkMode}
+          onSave={handleFavModalSave}
+          onCancel={() => setFavModal(null)}
         />
       )}
 

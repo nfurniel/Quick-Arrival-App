@@ -6,7 +6,7 @@ import './StopBottomSheet.css';
 
 const PEEK_HEIGHT = 210; // px visibles en estado colapsado
 
-export default function StopBottomSheet({ stop, isDarkMode, onClose, onSelectBus }) {
+export default function StopBottomSheet({ stop, isDarkMode, onClose, onSelectBus, isFavourite, onToggleFavourite }) {
   const [expanded, setExpanded] = useState(false);
   const [arrivals, setArrivals] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -122,14 +122,23 @@ export default function StopBottomSheet({ stop, isDarkMode, onClose, onSelectBus
           <h3 className="sheet-stop-name">{stop.name}</h3>
           <span className="sheet-stop-type">{stop.typeLabel}</span>
         </div>
+        {onToggleFavourite && (
+          <button
+            className={`sheet-fav-btn ${isFavourite ? 'active' : ''}`}
+            onClick={() => onToggleFavourite(stop.name)}
+            aria-label={isFavourite ? 'Quitar de favoritos' : 'Guardar en favoritos'}
+          >
+            {isFavourite ? '♥' : '♡'}
+          </button>
+        )}
         <button className="sheet-close-btn" onClick={onClose} aria-label="Cerrar">✕</button>
       </div>
 
       {/* Líneas que pasan por la parada */}
       {lines.length > 0 && (
         <div className="sheet-lines">
-          {lines.map((line, i) => (
-            <span key={i} className="sheet-line-badge">{line}</span>
+          {lines.map((line) => (
+            <span key={line} className="sheet-line-badge">{line}</span>
           ))}
         </div>
       )}
@@ -159,18 +168,26 @@ export default function StopBottomSheet({ stop, isDarkMode, onClose, onSelectBus
           <>
             {stale && (
               <div className="sheet-stale">
-                Datos de hace {minutosCacheados} min · API no disponible
+                Última actualización hace {minutosCacheados} min
               </div>
             )}
 
             <div className="sheet-arrivals-list">
               {arrivals.map((a, i) => (
                 <div
-                  key={i}
+                  key={`${a.line}-${a.direction}-${i}`}
                   className="sheet-arrival-row"
+                  role="button"
+                  tabIndex={0}
                   onClick={() => {
                     onSelectBus({ ...a, codStop: stop.codStop, stopName: stop.name, stopLat: stop.lat, stopLng: stop.lng });
                     onClose();
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      onSelectBus({ ...a, codStop: stop.codStop, stopName: stop.name, stopLat: stop.lat, stopLng: stop.lng });
+                      onClose();
+                    }
                   }}
                 >
                   <div className="sheet-arrival-line">{a.line}</div>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './Sidebar.css';
 import lightThemeIcon from '../../assets/light-theme-icon.png';
 import darkThemeIcon from '../../assets/dark-theme-icon.png';
@@ -26,6 +26,39 @@ export const avatars = [
   avatar8, avatar9, avatar10, avatar11, avatar12, avatar13, avatar14
 ];
 
+function FavItem({ fav, onSelect, onRemove }) {
+  const [confirming, setConfirming] = useState(false);
+
+  return (
+    <div className={`sidebar-fav-item ${confirming ? 'confirming' : ''}`}>
+      {confirming ? (
+        <div className="sidebar-fav-confirm">
+          <span className="sidebar-fav-confirm-text">¿Eliminar?</span>
+          <button className="sidebar-fav-confirm-yes" onClick={() => onRemove(fav.stopId)}>Sí</button>
+          <button className="sidebar-fav-confirm-no" onClick={() => setConfirming(false)}>No</button>
+        </div>
+      ) : (
+        <>
+          <button className="sidebar-fav-main" onClick={onSelect}>
+            <span className="sidebar-fav-star">♥</span>
+            <span className="sidebar-fav-name">{fav.name}</span>
+            {fav.lines.length > 0 && (
+              <span className="sidebar-fav-lines">{fav.lines.slice(0, 3).join(' · ')}</span>
+            )}
+          </button>
+          <button
+            className="sidebar-fav-delete"
+            onClick={() => setConfirming(true)}
+            aria-label="Eliminar favorito"
+          >
+            ✕
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function Sidebar({
   isOpen,
   onOpen,
@@ -39,7 +72,10 @@ export default function Sidebar({
   onToggleAvatarPicker,
   greeting,
   onLogout,
-  onSearchBus
+  onSearchBus,
+  favourites,
+  onSelectFavourite,
+  onRemoveFavourite,
 }) {
   const handleClose = () => {
     onClose();
@@ -61,7 +97,14 @@ export default function Sidebar({
 
       {/* Overlay oscuro cuando el sidebar esta abierto */}
       {isOpen && (
-        <div className="sidebar-overlay" onClick={handleClose} />
+        <div
+          className="sidebar-overlay"
+          role="button"
+          tabIndex={0}
+          aria-label="Cerrar menú"
+          onClick={handleClose}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleClose(); }}
+        />
       )}
 
       {/* Sidebar tipo Waze */}
@@ -69,7 +112,14 @@ export default function Sidebar({
         {/* Cabecera del sidebar con avatar y saludo */}
         <div className="sidebar-header">
           <button className="sidebar-close-btn" onClick={handleClose}>✕</button>
-          <div className="sidebar-avatar-container" onClick={() => onToggleAvatarPicker()}>
+          <div
+            className="sidebar-avatar-container"
+            role="button"
+            tabIndex={0}
+            aria-label="Cambiar avatar"
+            onClick={() => onToggleAvatarPicker()}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onToggleAvatarPicker(); }}
+          >
             <img src={avatars[selectedAvatar]} alt="Avatar" className="sidebar-avatar" />
             <span className="avatar-edit-badge">✎</span>
           </div>
@@ -89,6 +139,9 @@ export default function Sidebar({
                   alt={`Avatar ${i + 1}`}
                   className={`avatar-option ${i === selectedAvatar ? 'avatar-selected' : ''}`}
                   onClick={() => onAvatarSelect(i)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onAvatarSelect(i); }}
+                  tabIndex={0}
+                  role="button"
                 />
               ))}
             </div>
@@ -114,6 +167,27 @@ export default function Sidebar({
             />
             <span>{isDarkMode ? 'Modo claro' : 'Modo oscuro'}</span>
           </button>
+
+          <div className="sidebar-divider"></div>
+
+          {/* Paradas favoritas */}
+          <div className="sidebar-favourites">
+            <p className="sidebar-favourites-title">Mis paradas</p>
+            {(!favourites || favourites.length === 0) ? (
+              <p className="sidebar-favourites-empty">Aún no tienes paradas guardadas</p>
+            ) : (
+              <div className="sidebar-favourites-list">
+                {favourites.map(fav => (
+                  <FavItem
+                    key={fav.id}
+                    fav={fav}
+                    onSelect={() => { handleClose(); onSelectFavourite(fav); }}
+                    onRemove={onRemoveFavourite}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
 
           <div className="sidebar-divider"></div>
 

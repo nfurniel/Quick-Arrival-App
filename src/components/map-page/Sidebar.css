@@ -325,3 +325,177 @@
     background: #333;
   }
 }
+
+/* ── Favoritos ── */
+.sidebar-favourites {
+  padding: 10px 0 4px;
+}
+
+.sidebar-favourites-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin: 0 0 6px 0;
+  padding: 0 24px;
+
+  .dark-mode & { color: #666; }
+}
+
+.sidebar-favourites-empty {
+  font-size: 0.85rem;
+  color: #bbb;
+  padding: 6px 24px 10px;
+  margin: 0;
+
+  .dark-mode & { color: #555; }
+}
+
+.sidebar-favourites-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-fav-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+
+  &:hover {
+    background: #f5f5f5;
+
+    .sidebar-fav-delete {
+      opacity: 1;
+    }
+  }
+
+  .dark-mode & {
+    &:hover {
+      background: #2a2a2a;
+    }
+  }
+}
+
+.sidebar-fav-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  padding: 11px 8px 11px 24px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  min-width: 0;
+}
+
+.sidebar-fav-confirm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 16px 10px 24px;
+}
+
+.sidebar-fav-confirm-text {
+  flex: 1;
+  font-size: 0.85rem;
+  color: #555;
+
+  .dark-mode & {
+    color: #aaa;
+  }
+}
+
+.sidebar-fav-confirm-yes {
+  background: #fb2049;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 5px 12px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.2s;
+
+  &:hover {
+    opacity: 0.85;
+  }
+}
+
+.sidebar-fav-confirm-no {
+  background: none;
+  color: #888;
+  border: 1.5px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+
+  &:hover {
+    background: #f5f5f5;
+  }
+
+  .dark-mode & {
+    border-color: #444;
+    color: #888;
+
+    &:hover {
+      background: #2a2a2a;
+    }
+  }
+}
+
+.sidebar-fav-delete {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #bbb;
+  font-size: 0.8rem;
+  padding: 11px 16px 11px 4px;
+  opacity: 0;
+  transition: color 0.2s, opacity 0.2s;
+  flex-shrink: 0;
+
+  &:hover {
+    color: #fb2049;
+  }
+
+  .dark-mode & {
+    color: #555;
+
+    &:hover {
+      color: #fb2049;
+    }
+  }
+}
+
+.sidebar-fav-star {
+  color: #fb2049;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.sidebar-fav-name {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+
+  .dark-mode & { color: #ddd; }
+}
+
+.sidebar-fav-lines {
+  font-size: 0.75rem;
+  color: #999;
+  flex-shrink: 0;
+
+  .dark-mode & { color: #666; }
+}

@@ -46,7 +46,7 @@ function HighlightedMarker({ stop, codStop, lines, typeLabel, isDarkMode, onSele
 
   const handleClick = () => {
     if (isMobile()) {
-      onSelectStop({ codStop, name: stop.name, typeLabel, lines, lat: stop.lat, lng: stop.lng });
+      onSelectStop({ codStop, name: stop.name, typeLabel, lines, lat: stop.lat, lng: stop.lng, stopId: stop.stop_id });
     } else {
       setIsOpen(true);
     }
@@ -116,7 +116,7 @@ function HighlightedStopPopup({ stopName, stopType, lines, codStop, onSelectBus 
       <span className="bus-type-label">{stopType}</span>
       {lines.length > 0 && (
         <div className="bus-lines">
-          {lines.map((line, i) => <span key={i} className="bus-line-badge">{line}</span>)}
+          {lines.map((line) => <span key={line} className="bus-line-badge">{line}</span>)}
         </div>
       )}
       <div className="bus-arrivals-section">
@@ -134,8 +134,14 @@ function HighlightedStopPopup({ stopName, stopType, lines, codStop, onSelectBus 
         {arrivals?.length > 0 && (
           <div className="bus-arrivals-list">
             {arrivals.map((a, i) => (
-              <div key={i} className="bus-arrival-row clickable-arrival"
-                onClick={(e) => { e.stopPropagation(); onSelectBus({ ...a, codStop, stopName }); }}>
+              <div
+                key={`${a.line}-${a.direction}-${i}`}
+                className="bus-arrival-row clickable-arrival"
+                role="button"
+                tabIndex={0}
+                onClick={(e) => { e.stopPropagation(); onSelectBus({ ...a, codStop, stopName }); }}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onSelectBus({ ...a, codStop, stopName }); }}
+              >
                 <span className="bus-arrival-line">{a.line}</span>
                 <span className="bus-arrival-dest">{a.destination}</span>
                 <span className="bus-arrival-time">{a.minutes === 0 ? 'YA' : `${a.minutes} min`}</span>
