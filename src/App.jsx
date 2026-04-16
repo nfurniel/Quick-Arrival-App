@@ -11,22 +11,25 @@ function App() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Al cargar la app, comprobar si ya hay una sesión activa guardada.
+    // Esto cubre el caso de usuarios que vuelven con el token en localStorage.
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session && window.location.pathname === '/') {
+        navigate('/mapa');
+      }
+    });
+
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY') {
         setShowResetPassword(true);
-      }
-      // Cuando el usuario confirma el email o inicia sesión de alguna forma global
-      if (event === 'SIGNED_IN') {
+      } else if (event === 'SIGNED_IN') {
         navigate('/mapa');
-      }
-      if (event === 'SIGNED_OUT') {
+      } else if (event === 'SIGNED_OUT') {
         navigate('/');
       }
     });
 
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
+    return () => authListener.subscription.unsubscribe();
   }, [navigate]);
 
   return (

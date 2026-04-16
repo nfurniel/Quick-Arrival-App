@@ -8,7 +8,7 @@ import { busStopIcons, activeBusStopIcons, getStopType } from './mapIcons';
 
 const isMobile = () => window.innerWidth < 768;
 
-export default function BusStopsLayer({ isDarkMode, onSelectBus, onSelectStop, selectedBus }) {
+export default function BusStopsLayer({ isDarkMode, onSelectBus, onSelectStop, selectedBus, favourites, onToggleFavourite }) {
   const [stops, setStops] = useState([]);
   const debounceRef = useRef(null);
   const map = useMapEvents({ moveend: () => cargarParadas() });
@@ -63,6 +63,8 @@ export default function BusStopsLayer({ isDarkMode, onSelectBus, onSelectStop, s
             stop={stop}
             onSelectBus={onSelectBus}
             onSelectStop={onSelectStop}
+            isFavourite={favourites?.some(f => f.stopId === stop.stop_id) ?? false}
+            onToggleFavourite={onToggleFavourite}
           />
         );
       })}
@@ -70,12 +72,12 @@ export default function BusStopsLayer({ isDarkMode, onSelectBus, onSelectStop, s
   );
 }
 
-function StopMarker({ position, icon, isActive, isDarkMode, stopName, stopType, lines, codStop, stop, onSelectBus, onSelectStop }) {
+function StopMarker({ position, icon, isActive, isDarkMode, stopName, stopType, lines, codStop, stop, onSelectBus, onSelectStop, isFavourite, onToggleFavourite }) {
   const [isOpen, setIsOpen] = useState(false);
 
   const handleClick = () => {
     if (isMobile()) {
-      onSelectStop({ codStop, name: stopName, typeLabel: stopType, lines, lat: stop.lat, lng: stop.lng });
+      onSelectStop({ codStop, name: stopName, typeLabel: stopType, lines, lat: stop.lat, lng: stop.lng, stopId: stop.stop_id });
     } else {
       setIsOpen(true);
     }
@@ -101,7 +103,10 @@ function StopMarker({ position, icon, isActive, isDarkMode, stopName, stopType, 
               codStop={codStop}
               stopLat={position[0]}
               stopLng={position[1]}
+              stopId={stop.stop_id}
               onSelectBus={onSelectBus}
+              isFavourite={isFavourite}
+              onToggleFavourite={onToggleFavourite}
             />
           ) : (
             <div className="bus-popup-content" style={{ padding: '10px', textAlign: 'center' }}>
@@ -114,7 +119,7 @@ function StopMarker({ position, icon, isActive, isDarkMode, stopName, stopType, 
   );
 }
 
-function BusStopPopup({ stopName, stopType, lines, codStop, stopLat, stopLng, onSelectBus }) {
+function BusStopPopup({ stopName, stopType, lines, codStop, stopLat, stopLng, stopId, onSelectBus, isFavourite, onToggleFavourite }) {
   const [arrivals, setArrivals] = useState(null);
   const [cargando, setCargando] = useState(false);
   const [datosAntiguos, setDatosAntiguos] = useState(false);
@@ -156,11 +161,22 @@ function BusStopPopup({ stopName, stopType, lines, codStop, stopLat, stopLng, on
 
   return (
     <div className="bus-popup-content">
-      <strong>{stopName}</strong>
+      <div className="bus-popup-header">
+        <strong>{stopName}</strong>
+        {onToggleFavourite && (
+          <button
+            className={`popup-fav-btn ${isFavourite ? 'active' : ''}`}
+            onClick={(e) => { e.stopPropagation(); onToggleFavourite(stopId, stopName); }}
+            aria-label={isFavourite ? 'Quitar de favoritos' : 'Guardar en favoritos'}
+          >
+            {isFavourite ? '♥' : '♡'}
+          </button>
+        )}
+      </div>
       <span className="bus-type-label">{stopType}</span>
       {lines.length > 0 && (
         <div className="bus-lines">
-          {lines.map((line, i) => <span key={i} className="bus-line-badge">{line}</span>)}
+          {lines.map((line) => <span key={line} className="bus-line-badge">{line}</span>)}
         </div>
       )}
       <div className="bus-arrivals-section">
@@ -183,8 +199,14 @@ function BusStopPopup({ stopName, stopType, lines, codStop, stopLat, stopLng, on
         {arrivals?.length > 0 && (
           <div className="bus-arrivals-list">
             {arrivals.map((a, i) => (
-              <div key={i} className="bus-arrival-row clickable-arrival"
-                onClick={(e) => { e.stopPropagation(); onSelectBus({ ...a, codStop, stopName, stopLat, stopLng }); }}>
+              <div
+                key={`${a.line}-${a.direction}-${i}`}
+                className="bus-arrival-row clickable-arrival"
+                role="button"
+                tabIndex={0}
+                onClick={(e) => { e.stopPropagation(); onSelectBus({ ...a, codStop, stopName, stopLat, stopLng }); }}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onSelectBus({ ...a, codStop, stopName, stopLat, stopLng }); }}
+              >
                 <span className="bus-arrival-line">{a.line}</span>
                 <span className="bus-arrival-dest">{a.destination}</span>
                 <span className="bus-arrival-time">{a.minutes === 0 ? 'YA' : `${a.minutes} min`}</span>

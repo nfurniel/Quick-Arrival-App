@@ -12,15 +12,31 @@
   flex-direction: column;
   transition: transform 0.38s cubic-bezier(0.32, 0.72, 0, 1);
   user-select: none;
-}
 
-.stop-bottom-sheet.dark {
-  background: #1c1c1e;
-  box-shadow: 0 -4px 32px rgba(0, 0, 0, 0.4);
-}
+  /* ── Escritorio: panel flotante lateral ── */
+  @media (min-width: 768px) {
+    left: auto;
+    right: 24px;
+    bottom: 24px;
+    width: 340px;
+    max-height: 70vh;
+    border-radius: 20px;
+    transform: none !important;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.18);
+  }
 
-.stop-bottom-sheet.dragging {
-  /* sin transición mientras se arrastra */
+  &.dark {
+    background: #1c1c1e;
+    box-shadow: 0 -4px 32px rgba(0, 0, 0, 0.4);
+
+    @media (min-width: 768px) {
+      box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+    }
+  }
+
+  &.dragging {
+    /* sin transición mientras se arrastra */
+  }
 }
 
 /* ── Handle de arrastre ── */
@@ -31,6 +47,10 @@
   cursor: grab;
   flex-shrink: 0;
   touch-action: none;
+
+  @media (min-width: 768px) {
+    display: none;
+  }
 }
 
 .sheet-drag-area:active { cursor: grabbing; }
@@ -82,6 +102,24 @@
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
+
+/* ── Botón favorito ── */
+.sheet-fav-btn {
+  background: none;
+  border: none;
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+  color: #ccc;
+  padding: 2px 6px;
+  transition: color 0.2s, transform 0.15s;
+  flex-shrink: 0;
+}
+
+.sheet-fav-btn.active { color: #fb2049; }
+.sheet-fav-btn:hover { transform: scale(1.2); }
+.dark .sheet-fav-btn { color: #555; }
+.dark .sheet-fav-btn.active { color: #fb2049; }
 
 .sheet-close-btn {
   background: #f0f0f0;

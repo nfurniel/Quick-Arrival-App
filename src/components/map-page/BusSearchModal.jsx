@@ -146,7 +146,14 @@ export default function BusSearchModal({ isOpen, isDarkMode, userLocation, onRes
 
   return (
     <>
-      <div className="bus-search-overlay" onClick={onDismiss} />
+      <div
+        className="bus-search-overlay"
+        role="button"
+        tabIndex={0}
+        aria-label="Cerrar búsqueda"
+        onClick={onDismiss}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onDismiss(); }}
+      />
       <div className={`bus-search-modal ${isDarkMode ? 'dark-modal' : ''}`}>
         {phase === 'search' && (
           <>
@@ -237,8 +244,8 @@ export default function BusSearchModal({ isOpen, isDarkMode, userLocation, onRes
 
             <div className="bus-search-actions">
               <button className="bus-search-btn" onClick={handleShowOnMap}>
-                Ver en el mapa
-              </button>
+                  Ver en el mapa
+                </button>
               <button className="bus-search-back" onClick={() => { setPhase('search'); setError(''); }}>
                 Buscar otra línea
               </button>
