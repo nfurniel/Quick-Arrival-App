@@ -89,6 +89,15 @@ export const highlightedStopIcon = new L.Icon({
   className: 'highlighted-stop-marker'
 });
 
+// Icono para parada favorita seleccionada: solo el anillo de resalto, sin imagen
+export const favSelectedIcon = new L.DivIcon({
+  html: '<div class="fav-selected-ring"></div>',
+  iconSize: [24, 24],
+  iconAnchor: [12, 12],
+  popupAnchor: [0, -12],
+  className: '',
+});
+
 // Determinar el tipo de parada segun cod_mode y lineas
 export function getStopType(codMode, lines) {
   if (codMode === 6) return 'urbano';

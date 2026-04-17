@@ -15,6 +15,7 @@ function haversine(lat1, lng1, lat2, lng2) {
 // ─── Caché de tiempos compartida para dev local ────────────────────────────────
 const arrivalsCache = new Map();
 const ARRIVALS_TTL = { '6': 20000, '8': 30000 };
+let trafficCache = new Map();
 let devEmtToken = null;
 let devEmtTokenExpiry = null;
 
@@ -199,6 +200,52 @@ function localApiPlugin(env) {
               return send(res, 200, { arrivals: cached.data, cached: true, stale: true, age, error: false });
             }
             return send(res, 502, { arrivals: [], cached: false, error: true });
+          }
+        }
+
+        // GET /api/traffic — incidencias TomTom
+        if (pathname === '/api/traffic') {
+          const { minLon, minLat, maxLon, maxLat } = Object.fromEntries(params);
+          if (!minLon || !minLat || !maxLon || !maxLat)
+            return send(res, 400, { error: 'Faltan parámetros bbox', incidents: [] });
+
+          const tomtomKey = env.TOMTOM_API_KEY;
+          if (!tomtomKey)
+            return send(res, 500, { error: 'TOMTOM_API_KEY no configurada en .env', incidents: [] });
+
+          const GRID = 0.02;
+          const snapped = {
+            minLon: (Math.floor(parseFloat(minLon) / GRID) * GRID).toFixed(3),
+            minLat: (Math.floor(parseFloat(minLat) / GRID) * GRID).toFixed(3),
+            maxLon: (Math.ceil(parseFloat(maxLon)  / GRID) * GRID).toFixed(3),
+            maxLat: (Math.ceil(parseFloat(maxLat)  / GRID) * GRID).toFixed(3),
+          };
+          const cacheKey = `${snapped.minLon},${snapped.minLat},${snapped.maxLon},${snapped.maxLat}`;
+
+          const cached = trafficCache.get(cacheKey);
+          if (cached && Date.now() - cached.timestamp < 5 * 60 * 1000) {
+            console.log(`[local-api/traffic] cache hit ${cacheKey}`);
+            return send(res, 200, { incidents: cached.data, cached: true });
+          }
+
+          const url = `https://api.tomtom.com/traffic/services/5/incidentDetails?key=${tomtomKey}&bbox=${cacheKey}&language=es-ES&projection=EPSG4326`;
+
+          try {
+            const r = await fetch(url);
+            if (!r.ok) {
+              const body = await r.text();
+              console.error(`[local-api/traffic] TomTom ${r.status}:`, body);
+              throw new Error(`TomTom ${r.status}: ${body}`);
+            }
+            const json = await r.json();
+            const incidents = json.incidents || [];
+            trafficCache.set(cacheKey, { data: incidents, timestamp: Date.now() });
+            console.log(`[local-api/traffic] ${incidents.length} incidencias (${cacheKey})`);
+            return send(res, 200, { incidents, cached: false });
+          } catch (e) {
+            console.error('[local-api/traffic]', e.message);
+            if (cached) return send(res, 200, { incidents: cached.data, cached: true, stale: true });
+            return send(res, 502, { error: e.message, incidents: [] });
           }
         }
 

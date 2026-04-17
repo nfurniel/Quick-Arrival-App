@@ -17,6 +17,8 @@ import usePresence from '../../hooks/usePresence';
 import { loadFavourites, addFavourite, removeFavourite } from '../../services/favoritesService';
 import FavouriteModal from './FavouriteModal';
 import FavouritePopupLayer from './FavouritePopupLayer';
+import TrafficIncidentsLayer from './TrafficIncidentsLayer';
+import semaforoIcon from '../../assets/icono-semaforo.png';
 
 // Componente interno para controlar el mapa desde fuera del MapContainer
 function MapController({ flyToTarget }) {
@@ -62,6 +64,7 @@ export default function MapPage() {
   const [favourites, setFavourites] = useState([]);
   const [flyToTarget, setFlyToTarget] = useState(null);
   const [favModal, setFavModal] = useState(null); // { stopId, stopName }
+  const [trafficVisible, setTrafficVisible] = useState(false);
   const navigate = useNavigate();
 
   // Presencia: ver otros usuarios en el mapa
@@ -286,7 +289,26 @@ export default function MapPage() {
             onSelectStop={setSelectedStop}
           />
         )}
+
+        <TrafficIncidentsLayer visible={trafficVisible} />
+
+        {trafficVisible && (
+          <TileLayer
+            url={`https://api.tomtom.com/traffic/map/4/tile/flow/relative-delay/{z}/{x}/{y}.png?key=${import.meta.env.VITE_TOMTOM_API_KEY}&tileSize=256`}
+            opacity={0.8}
+            attribution="&copy; TomTom"
+          />
+        )}
       </MapContainer>
+
+      {/* Botón toggle tráfico */}
+      <button
+        className={`traffic-toggle-btn ${trafficVisible ? 'active' : ''} ${isDarkMode ? 'dark' : ''}`}
+        onClick={() => setTrafficVisible(v => !v)}
+        title={trafficVisible ? 'Ocultar tráfico' : 'Mostrar tráfico'}
+      >
+        <img src={semaforoIcon} alt="Tráfico" className="traffic-toggle-icon" />
+      </button>
 
       {/* Sidebar */}
       <Sidebar
@@ -349,6 +371,7 @@ export default function MapPage() {
         <FavouriteModal
           stopName={favModal.stopName}
           isDarkMode={isDarkMode}
+          existingAliases={favourites.map(f => f.alias).filter(Boolean)}
           onSave={handleFavModalSave}
           onCancel={() => setFavModal(null)}
         />

@@ -2,7 +2,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { Marker, Popup, useMap } from 'react-leaflet';
 import { getStopTimes } from '../../services/crtmService';
-import { highlightedStopIcon } from './mapIcons';
+import { favSelectedIcon } from './mapIcons';
 import { useState } from 'react';
 
 export default function FavouritePopupLayer({ stop, isDarkMode, onSelectBus, onClose }) {
@@ -27,7 +27,7 @@ export default function FavouritePopupLayer({ stop, isDarkMode, onSelectBus, onC
     <Marker
       ref={markerRef}
       position={[stop.lat, stop.lng]}
-      icon={highlightedStopIcon}
+      icon={favSelectedIcon}
       zIndexOffset={900}
       eventHandlers={{ popupclose: onClose }}
     >

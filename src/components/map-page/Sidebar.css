@@ -460,6 +460,10 @@
   transition: color 0.2s, opacity 0.2s;
   flex-shrink: 0;
 
+  @media (hover: none) {
+    opacity: 1;
+  }
+
   &:hover {
     color: #fb2049;
   }
