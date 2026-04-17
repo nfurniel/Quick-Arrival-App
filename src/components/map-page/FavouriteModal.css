@@ -104,6 +104,16 @@
   }
 }
 
+.fav-modal-input--error {
+  border-color: #fb2049 !important;
+}
+
+.fav-modal-error {
+  font-size: 0.82rem;
+  color: #fb2049;
+  margin: -8px 0 0;
+}
+
 .fav-modal-actions {
   display: flex;
   gap: 10px;

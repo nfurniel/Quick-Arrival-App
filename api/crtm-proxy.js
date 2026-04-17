@@ -41,10 +41,9 @@ export default async function handler(request) {
 
     console.log('[Proxy CRTM] Target URL:', targetUrl);
 
-    // Timeout de 8s para no depender del límite de Vercel (25s edge)
-    // Si CRTM no responde a tiempo, el frontend reintentará automáticamente
+    // Timeout de 18s — CRTM es muy lento, pero Vercel Edge permite hasta 25s
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    const timeoutId = setTimeout(() => controller.abort(), 18000);
 
     // Hacer la peticion real al CRTM
     let crtmResponse;
@@ -74,8 +73,13 @@ export default async function handler(request) {
 
   } catch (error) {
     console.error('[Proxy CRTM] Error:', error.message);
-    return new Response(JSON.stringify({ error: 'Error en el proxy', details: error.message }), {
-      status: 500,
+    // Devolver 504 si es timeout para que el frontend lo distinga de un error real
+    const isTimeout = error.name === 'AbortError';
+    return new Response(JSON.stringify({
+      error: isTimeout ? 'Timeout del proxy CRTM' : 'Error en el proxy',
+      details: error.message,
+    }), {
+      status: isTimeout ? 504 : 500,
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
     });
   }

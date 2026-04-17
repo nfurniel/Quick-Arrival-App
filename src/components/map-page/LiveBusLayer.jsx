@@ -55,12 +55,24 @@ export default function LiveBusLayer({ selectedBus }) {
         );
 
         if (ubicaciones && ubicaciones.length > 0 && montado) {
-          setBusLocations(ubicaciones);
+          // Si hay varios buses en la misma línea, elegir el más cercano a la parada
+          let busParaRuta = ubicaciones[0];
+          if (ubicaciones.length > 1 && selectedBus.stopLat && selectedBus.stopLng) {
+            busParaRuta = ubicaciones.reduce((closest, loc) => {
+              const distLoc = Math.hypot(loc.latitude - selectedBus.stopLat, loc.longitude - selectedBus.stopLng);
+              const distClosest = Math.hypot(closest.latitude - selectedBus.stopLat, closest.longitude - selectedBus.stopLng);
+              return distLoc < distClosest ? loc : closest;
+            });
+            // Mostrar solo el bus más cercano para evitar confusión
+            setBusLocations([busParaRuta]);
+          } else {
+            setBusLocations(ubicaciones);
+          }
 
           // Calcular ruta desde el bus hasta la parada
           if (selectedBus.stopLat && selectedBus.stopLng) {
             const ruta = await fetchRoute(
-              ubicaciones[0].latitude, ubicaciones[0].longitude,
+              busParaRuta.latitude, busParaRuta.longitude,
               selectedBus.stopLat, selectedBus.stopLng
             );
             if (ruta && montado) setRoutePath(ruta);

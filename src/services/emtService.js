@@ -95,61 +95,6 @@ export async function getStopsAroundPoint(lng, lat, radius = 500) {
   return json.data || [];
 }
 
-// Obtener tiempos de llegada en tiempo real de una parada EMT
-// Esta API es mucho mas fiable que la del CRTM para buses urbanos
-export async function getEMTArrivals(stopId, signal) {
-  try {
-    const token = await emtLogin();
-
-    const url = `${BASE_URL}/v2/transport/busemtmad/stops/${stopId}/arrives/all/`;
-    const body = {
-      cultureInfo: 'ES',
-      Text_StopRequired_YN: 'Y',
-      Text_EstimationsRequired_YN: 'Y',
-      Text_IncidencesRequired_YN: 'N',
-    };
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'accessToken': token, 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-      signal,
-    });
-
-    if (!response.ok) {
-      // Token caducado -> hacer login de nuevo
-      if (response.status === 401 || response.status === 403) {
-        tokenGuardado = null;
-        tokenExpira = null;
-        const nuevoToken = await emtLogin();
-        const retry = await fetch(url, {
-          method: 'POST',
-          headers: { 'accessToken': nuevoToken, 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-          signal,
-        });
-        if (!retry.ok) {
-          console.warn(`[EMT] Retry fallo: ${retry.status}`);
-          return { arrivals: [], stale: false, cachedAt: null, error: true };
-        }
-        const retryJson = await retry.json();
-        return parsearLlegadasEMT(retryJson);
-      }
-
-      console.warn(`[EMT] Error ${response.status} para parada ${stopId}`);
-      return { arrivals: [], stale: false, cachedAt: null, error: true };
-    }
-
-    const json = await response.json();
-    return parsearLlegadasEMT(json);
-
-  } catch (error) {
-    if (error.name === 'AbortError') throw error;
-    console.error('[EMT] Error:', error.message);
-    return { arrivals: [], stale: false, cachedAt: null, error: true };
-  }
-}
-
 // Obtener las ubicaciones GPS de los buses de una linea en una parada EMT
 // Reutiliza el endpoint de llegadas que ya devuelve coordenadas del bus
 export async function getEMTBusLocations(stopId, lineFilter, busId) {
@@ -211,36 +156,4 @@ function extraerUbicacionesBus(json, lineFilter, busId) {
       vehicleId: String(a.bus),
       lineCode: String(a.line),
     }));
-}
-
-// Convertir la respuesta de EMT al formato que usa nuestro popup
-function parsearLlegadasEMT(json) {
-  const datos = json.data?.[0]?.Arrive || [];
-
-  if (datos.length === 0) {
-    return { arrivals: [], stale: false, cachedAt: null, error: false };
-  }
-
-  const llegadas = datos
-    .filter(a => a.estimateArrive > 0 && a.estimateArrive < 999999)
-    .map(a => ({
-      line: a.line || '?',
-      lineDescription: `Linea ${a.line}`,
-      destination: a.destination || '',
-      minutes: Math.round(a.estimateArrive / 60),
-      arrivalTime: new Date(Date.now() + a.estimateArrive * 1000)
-        .toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
-      codMode: '6',
-      codLine: a.line || '',
-      direction: 1,
-      busId: a.bus,
-      distanceMeters: a.DistanceBus,
-      busLocation: a.geometry?.coordinates
-        ? { longitude: a.geometry.coordinates[0], latitude: a.geometry.coordinates[1] }
-        : null,
-    }))
-    .slice(0, 6);
-
-  console.log(`[EMT] ${llegadas.length} llegadas obtenidas`);
-  return { arrivals: llegadas, stale: false, cachedAt: null, error: false };
 }
