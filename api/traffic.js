@@ -9,8 +9,8 @@ function snapBbox(minLon, minLat, maxLon, maxLat) {
   return {
     minLon: (Math.floor(parseFloat(minLon) / GRID) * GRID).toFixed(3),
     minLat: (Math.floor(parseFloat(minLat) / GRID) * GRID).toFixed(3),
-    maxLon: (Math.ceil(parseFloat(maxLon)  / GRID) * GRID).toFixed(3),
-    maxLat: (Math.ceil(parseFloat(maxLat)  / GRID) * GRID).toFixed(3),
+    maxLon: (Math.ceil(parseFloat(maxLon) / GRID) * GRID).toFixed(3),
+    maxLat: (Math.ceil(parseFloat(maxLat) / GRID) * GRID).toFixed(3),
   };
 }
 
@@ -25,7 +25,7 @@ export default async function handler(req, res) {
   const key = process.env.TOMTOM_API_KEY;
   if (!key) return res.status(500).json({ error: 'TOMTOM_API_KEY no configurada', incidents: [] });
 
-  const snapped = snapBbox(minLon, minLat, maxLon, maxLat);
+  const snapped = snapBox(minLon, minLat, maxLon, maxLat);
   const cacheKey = `${snapped.minLon},${snapped.minLat},${snapped.maxLon},${snapped.maxLat}`;
   const cached = CACHE.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {

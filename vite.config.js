@@ -203,6 +203,161 @@ function localApiPlugin(env) {
           }
         }
 
+        // GET + POST /api/reports
+        if (pathname === '/api/reports') {
+          if (req.method === 'OPTIONS') {
+            res.writeHead(204, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS' });
+            return res.end();
+          }
+
+          if (req.method === 'GET') {
+            const lineName = params.get('lineName');
+            if (!lineName) return send(res, 400, { error: 'Falta parámetro: lineName' });
+            const since = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+            const q = `select=id,type,metadata,description,line_name,created_at,report_votes(vote_type,user_id)&status=eq.active&line_name=eq.${encodeURIComponent(lineName)}&created_at=gte.${since}&order=created_at.desc&limit=20`;
+            try {
+              const r = await fetch(`${SUPABASE_URL}/rest/v1/reports?${q}`, {
+                headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
+              });
+              if (!r.ok) throw new Error(`Supabase ${r.status}`);
+              const raw = await r.json();
+              const reports = raw.map(({ report_votes, ...rep }) => ({
+                ...rep,
+                votes: {
+                  up:   (report_votes || []).filter(v => v.vote_type === 'up').length,
+                  down: (report_votes || []).filter(v => v.vote_type === 'down').length,
+                },
+              }));
+              return send(res, 200, { reports });
+            } catch (e) {
+              console.error('[local-api/reports GET]', e.message);
+              return send(res, 502, { error: e.message, reports: [] });
+            }
+          }
+
+          if (req.method === 'POST') {
+            // Leer body
+            const body = await new Promise((resolve) => {
+              let data = '';
+              req.on('data', chunk => { data += chunk; });
+              req.on('end', () => { try { resolve(JSON.parse(data)); } catch { resolve({}); } });
+            });
+
+            // Verificar JWT
+            const authHeader = req.headers['authorization'] || '';
+            const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+            if (!token) return send(res, 401, { error: 'No autenticado' });
+
+            const authRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+              headers: { Authorization: `Bearer ${token}`, apikey: serviceKey },
+            });
+            if (!authRes.ok) return send(res, 401, { error: 'Token inválido' });
+            const user = await authRes.json();
+
+            const { type, metadata, description, lat, lng, lineName, lineId } = body;
+            if (!type || lat == null || lng == null) return send(res, 400, { error: 'Faltan campos: type, lat, lng' });
+
+            const VALID_TYPES = ['seats', 'punctuality', 'crowding', 'noise', 'temperature', 'driver', 'accessibility'];
+            if (!VALID_TYPES.includes(type)) return send(res, 400, { error: 'Tipo de reporte no válido' });
+
+            const since = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+            const dupRes = await fetch(
+              `${SUPABASE_URL}/rest/v1/reports?user_id=eq.${user.id}&type=eq.${type}&line_name=eq.${encodeURIComponent(lineName || '')}&status=eq.active&created_at=gte.${since}&select=id&limit=1`,
+              { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } }
+            );
+            if (dupRes.ok) {
+              const existing = await dupRes.json();
+              if (existing.length > 0) return send(res, 409, { error: 'Ya has reportado esta categoría en esta línea recientemente' });
+            }
+
+            const payload = {
+              user_id: user.id,
+              type,
+              metadata: metadata || {},
+              description: description?.slice(0, 300) || null,
+              lat: parseFloat(lat),
+              lng: parseFloat(lng),
+              line_name: lineName || null,
+              status: 'active',
+            };
+
+            try {
+              const r = await fetch(`${SUPABASE_URL}/rest/v1/reports`, {
+                method: 'POST',
+                headers: {
+                  apikey: serviceKey,
+                  Authorization: `Bearer ${serviceKey}`,
+                  'Content-Type': 'application/json',
+                  Prefer: 'return=representation',
+                },
+                body: JSON.stringify(payload),
+              });
+              if (!r.ok) { const t = await r.text(); console.error('[local-api/reports] Supabase error:', t); throw new Error(`Supabase ${r.status}: ${t}`); }
+              const [report] = await r.json();
+              console.log('[local-api/reports] Reporte creado:', report?.id);
+              return send(res, 201, { report });
+            } catch (e) {
+              console.error('[local-api/reports]', e.message);
+              return send(res, 502, { error: 'Error guardando el reporte' });
+            }
+          }
+        }
+
+        // POST /api/report-votes
+        if (pathname === '/api/report-votes') {
+          if (req.method === 'OPTIONS') {
+            res.writeHead(204, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type' });
+            return res.end();
+          }
+          if (req.method !== 'POST') return send(res, 405, { error: 'Método no permitido' });
+
+          const body = await new Promise((resolve) => {
+            let data = '';
+            req.on('data', chunk => { data += chunk; });
+            req.on('end', () => { try { resolve(JSON.parse(data)); } catch { resolve({}); } });
+          });
+
+          const authHeader = req.headers['authorization'] || '';
+          const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+          if (!token) return send(res, 401, { error: 'No autenticado' });
+
+          const authRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+            headers: { Authorization: `Bearer ${token}`, apikey: serviceKey },
+          });
+          if (!authRes.ok) return send(res, 401, { error: 'Token inválido' });
+          const user = await authRes.json();
+
+          const { reportId, voteType } = body;
+          if (!reportId || !['up', 'down'].includes(voteType))
+            return send(res, 400, { error: 'Faltan campos: reportId, voteType (up|down)' });
+
+          try {
+            const r = await fetch(`${SUPABASE_URL}/rest/v1/report_votes`, {
+              method: 'POST',
+              headers: {
+                apikey: serviceKey, Authorization: `Bearer ${serviceKey}`,
+                'Content-Type': 'application/json',
+                Prefer: 'resolution=merge-duplicates,return=representation',
+              },
+              body: JSON.stringify({ report_id: reportId, user_id: user.id, vote_type: voteType }),
+            });
+            if (!r.ok) { const t = await r.text(); throw new Error(`Supabase ${r.status}: ${t}`); }
+
+            const countsRes = await fetch(
+              `${SUPABASE_URL}/rest/v1/report_votes?report_id=eq.${reportId}&select=vote_type`,
+              { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } }
+            );
+            const votes = await countsRes.json();
+            const up   = votes.filter(v => v.vote_type === 'up').length;
+            const down = votes.filter(v => v.vote_type === 'down').length;
+            console.log(`[local-api/report-votes] report ${reportId}: ${up}👍 ${down}👎`);
+            return send(res, 200, { up, down, userVote: voteType });
+          } catch (e) {
+            console.error('[local-api/report-votes]', e.message);
+            return send(res, 502, { error: 'Error guardando el voto' });
+          }
+        }
+
         // GET /api/traffic — incidencias TomTom
         if (pathname === '/api/traffic') {
           const { minLon, minLat, maxLon, maxLat } = Object.fromEntries(params);

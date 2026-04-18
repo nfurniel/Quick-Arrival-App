@@ -18,6 +18,9 @@ import { loadFavourites, addFavourite, removeFavourite } from '../../services/fa
 import FavouriteModal from './FavouriteModal';
 import FavouritePopupLayer from './FavouritePopupLayer';
 import TrafficIncidentsLayer from './TrafficIncidentsLayer';
+import ReportModal from './ReportModal';
+import ReportsPanel from './ReportsPanel';
+import { TbBus, TbFlag, TbCircleCheck } from 'react-icons/tb';
 import semaforoIcon from '../../assets/icono-semaforo.png';
 
 // Componente interno para controlar el mapa desde fuera del MapContainer
@@ -65,7 +68,23 @@ export default function MapPage() {
   const [flyToTarget, setFlyToTarget] = useState(null);
   const [favModal, setFavModal] = useState(null); // { stopId, stopName }
   const [trafficVisible, setTrafficVisible] = useState(false);
+  const [onBus, setOnBus] = useState(false);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [reportToast, setReportToast] = useState(false);
+  const [reportsPanelKey, setReportsPanelKey] = useState(0);
+  const toastTimerRef = useRef(null);
   const navigate = useNavigate();
+
+  // Resetear estado de bus al cambiar de línea
+  useEffect(() => {
+    setOnBus(false);
+    setReportModalOpen(false);
+  }, [selectedBus?.line, selectedBus?.codStop]);
+
+  // Limpiar el timer del toast si el componente desmonta
+  useEffect(() => {
+    return () => { if (toastTimerRef.current) clearTimeout(toastTimerRef.current); };
+  }, []);
 
   // Presencia: ver otros usuarios en el mapa
   const otherUsers = usePresence(userLocation, userName, selectedAvatar);
@@ -212,6 +231,11 @@ export default function MapPage() {
   const darkTileUrl = "https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png";
   const tileUrl = isDarkMode ? darkTileUrl : lightTileUrl;
 
+  // URLs de los tiles de etiquetas (nombres de ciudades/pueblos, encima de todo)
+  const lightLabelsUrl = "https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png";
+  const darkLabelsUrl = "https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png";
+  const labelsUrl = isDarkMode ? darkLabelsUrl : lightLabelsUrl;
+
   const greeting = getGreeting();
 
   return (
@@ -299,6 +323,13 @@ export default function MapPage() {
             attribution="&copy; TomTom"
           />
         )}
+
+        {/* Etiquetas de nombres (ciudades, pueblos, calles) — siempre encima */}
+        <TileLayer
+          url={labelsUrl}
+          attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+          pane="shadowPane"
+        />
       </MapContainer>
 
       {/* Botón toggle tráfico */}
@@ -345,12 +376,40 @@ export default function MapPage() {
         <div className={`live-bus-panel ${isDarkMode ? 'dark-panel' : ''}`}>
           <div className="live-bus-panel-header">
             <strong>Monitoreando Línea {selectedBus.line}</strong>
-            <button className="close-live-bus" onClick={() => setSelectedBus(null)}>✕</button>
+            <button className="close-live-bus" onClick={() => { setSelectedBus(null); setOnBus(false); setReportModalOpen(false); }}>✕</button>
           </div>
           <div className="live-bus-panel-body">
             <p>Hacia: {selectedBus.destination}</p>
             <p>Parada: {selectedBus.stopName}</p>
+            <div className="live-bus-actions">
+              <button
+                className={`on-bus-btn ${onBus ? 'active' : ''}`}
+                onClick={() => setOnBus(v => !v)}
+              >
+                <TbBus size={15} />
+                {onBus ? 'En este bus' : 'Voy en este bus'}
+              </button>
+              {onBus && (
+                <button
+                  className="report-btn"
+                  onClick={async () => {
+                    const { data: { session } } = await supabase.auth.getSession();
+                    if (!session) return;
+                    setReportModalOpen(true);
+                  }}
+                >
+                  <TbFlag size={15} />
+                  Reportar
+                </button>
+              )}
+            </div>
           </div>
+          <ReportsPanel
+            key={reportsPanelKey}
+            lineName={selectedBus.line}
+            isDarkMode={isDarkMode}
+            onBus={onBus}
+          />
         </div>
       )}
 
@@ -388,6 +447,29 @@ export default function MapPage() {
         }}
         onDismiss={() => setBusSearchOpen(false)}
       />
+
+      {/* Modal de reporte de incidencia */}
+      {reportModalOpen && selectedBus && (
+        <ReportModal
+          bus={selectedBus}
+          userLocation={userLocation}
+          isDarkMode={isDarkMode}
+          onClose={() => setReportModalOpen(false)}
+          onSuccess={() => {
+            setReportToast(true);
+            setReportsPanelKey(k => k + 1);
+            if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+            toastTimerRef.current = setTimeout(() => setReportToast(false), 3000);
+          }}
+        />
+      )}
+
+      {/* Toast de confirmación de reporte */}
+      {reportToast && (
+        <div className={`report-toast ${isDarkMode ? 'dark' : ''}`}>
+          <TbCircleCheck size={16} /> Reporte enviado. ¡Gracias!
+        </div>
+      )}
     </div>
   );
 }
