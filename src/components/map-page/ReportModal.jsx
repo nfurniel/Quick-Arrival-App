@@ -122,6 +122,7 @@ export default function ReportModal({ bus, userLocation, isDarkMode, onClose, on
           lat: userLocation[0],
           lng: userLocation[1],
           lineName: bus.line,
+          busId: bus.busId || null,
         }),
       });
 

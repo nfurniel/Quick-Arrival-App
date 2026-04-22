@@ -42,6 +42,10 @@
     &:hover { background: #3a3a3c; border-color: #fb2049; }
   }
 
+  &.dark .report-type-label {
+    color: #f2f2f7;
+  }
+
   &.dark .report-option-card {
     background: #2c2c2e;
     border-color: #3a3a3c;

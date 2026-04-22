@@ -50,7 +50,7 @@ function groupByType(reports) {
   });
 }
 
-export default function ReportsPanel({ lineName, isDarkMode, onBus }) {
+export default function ReportsPanel({ lineName, busId, isDarkMode, onBus }) {
   const [reports, setReports]     = useState([]);
   const [loading, setLoading]     = useState(true);
   const [userVotes, setUserVotes] = useState({});
@@ -62,7 +62,9 @@ export default function ReportsPanel({ lineName, isDarkMode, onBus }) {
   const fetchReports = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await fetch(`/api/reports?lineName=${encodeURIComponent(lineName)}`);
+      let url = `/api/reports?lineName=${encodeURIComponent(lineName)}`;
+      if (busId) url += `&busId=${encodeURIComponent(busId)}`;
+      const r = await fetch(url);
       if (!r.ok) throw new Error();
       const { reports } = await r.json();
       setReports(reports || []);
@@ -71,7 +73,7 @@ export default function ReportsPanel({ lineName, isDarkMode, onBus }) {
     } finally {
       setLoading(false);
     }
-  }, [lineName]);
+  }, [lineName, busId]);
 
   useEffect(() => { fetchReports(); }, [fetchReports]);
 
