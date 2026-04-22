@@ -7,8 +7,8 @@
     border-top-color: #333;
 
     & .reports-panel-title   { color: #aaa; }
-    & .reports-panel-toggle  { color: #555; &:hover { color: #888; } }
-    & .reports-empty         { color: #666; }
+    & .reports-panel-toggle  { color: #888; &:hover { color: #bbb; } }
+    & .reports-empty         { color: #888; }
 
     & .report-group-header {
       background: #2c2c2e;
@@ -16,8 +16,8 @@
       &:hover { background: #343436; }
     }
 
-    & .report-group-label    { color: #f2f2f7; }
-    & .report-group-top      { color: #999; }
+    & .report-group-label    { color: #ccc; }
+    & .report-group-top      { color: #f0f0f0; }
     & .report-group-count    { background: #3a3a3c; color: #aaa; }
     & .report-group-upvotes  { color: #81c784; }
     & .report-group-right    { color: #888; }
@@ -26,13 +26,14 @@
     & .report-group-detail   { border-color: #3a3a3c; }
 
     & .report-detail-card {
+      background: #2c2c2e;
       border-color: #3a3a3c;
       &:not(:last-child) { border-bottom-color: #3a3a3c; }
     }
 
     & .report-detail-option  { color: #f2f2f7; }
-    & .report-detail-time    { color: #666; }
-    & .report-detail-desc    { color: #999; &.muted { color: #555; } }
+    & .report-detail-time    { color: #999; }
+    & .report-detail-desc    { color: #bbb; &.muted { color: #666; } }
 
     & .vote-btn {
       background: #3a3a3c;

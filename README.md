@@ -116,6 +116,8 @@ Si 100 usuarios consultan la misma parada a la vez, solo se hace 1 peticion a la
 Usuario hace clic en una fila de llegada (linea + destino)
   └─▶ MapPage.jsx guarda selectedBus en estado
         └─▶ LiveBusLayer.jsx lanza polling cada 8 segundos:
+              ├─ muestra "Buscando el bus en el mapa..." mientras no hay posicion
+              ├─ si tras 10 segundos no llega GPS: aviso de timeout al usuario
               └─▶ crtmService.getBusLocation(mode, codLine, direction, codStop)
                     ├─ modo 6 (EMT): extrae GPS del response de llegadas
                     └─ modo 8 (CRTM): GET /api/crtm/Widget/GetLineLocation...
@@ -174,7 +176,30 @@ Usuario abre BusSearchModal y escribe un numero de linea
 
 ---
 
-### 8. Presencia colaborativa
+### 8. Reportes colaborativos
+
+```
+Usuario activa "Voy en este bus" en el panel de seguimiento
+  └─▶ puede pulsar "Reportar" → ReportModal.jsx (3 pasos)
+        ├─ Paso 1: elige categoria (asientos, puntualidad, ocupacion, ruido, temperatura, conduccion, accesibilidad)
+        ├─ Paso 2: elige opcion dentro de la categoria
+        └─ Paso 3: descripcion opcional + enviar
+              └─▶ POST /api/reports { type, metadata: { value, busId }, lineName, lat, lng }
+                    ├─ validaciones: tipo, opcion, coordenadas en España, max 150 chars
+                    ├─ limite: 1 reporte por tipo/bus/usuario cada 2 horas
+                    └─▶ reportes guardados en BD tabla reports
+
+ReportsPanel.jsx (dentro del panel de seguimiento)
+  └─▶ GET /api/reports?lineName=X&busId=Y   ← filtra por bus concreto, no por toda la linea
+        └─▶ agrupa por categoria → mostrando la opcion mas frecuente por grupo
+              └─▶ usuarios con "Voy en este bus" pueden votar 👍/👎 cada reporte
+```
+
+Los reportes caducan automaticamente en 2 horas. El `busId` del vehiculo se guarda en el campo `metadata` JSONB para aislar los reportes por bus concreto.
+
+---
+
+### 9. Presencia colaborativa
 
 ```
 MapPage.jsx monta usePresence(userLocation, userName, avatarIndex)
@@ -195,6 +220,8 @@ Quick-Arrival-App/
 │   ├── stops-nearby.js           # GET /api/stops-nearby — paradas cercanas por linea
 │   ├── arrivals.js               # GET /api/arrivals — tiempos EMT/CRTM con cache compartida
 │   ├── traffic.js                # GET /api/traffic — incidencias TomTom con cache y bbox snap
+│   ├── reports.js                # GET + POST /api/reports — reportes colaborativos por bus
+│   ├── report-votes.js           # POST /api/report-votes — votos 👍/👎 en reportes
 │   ├── emt-proxy.js              # Proxy EMT (legacy, aun usado para GPS de buses)
 │   └── crtm-proxy.js             # Proxy CRTM con spoofing de Origin/Referer
 │
@@ -225,6 +252,10 @@ Quick-Arrival-App/
 │           ├── FavouritePopupLayer.jsx   # Popup de parada favorita (desktop)
 │           ├── FavouriteModal.jsx        # Modal para nombrar un favorito
 │           ├── StopBottomSheet.jsx       # Panel inferior de parada (movil)
+│           ├── ReportModal.jsx           # Modal de reporte en 3 pasos (categoria → opcion → confirmar)
+│           ├── ReportModal.css
+│           ├── ReportsPanel.jsx          # Panel de reportes agrupados por categoria con votos
+│           ├── ReportsPanel.css
 │           ├── Sidebar.jsx               # Menu lateral
 │           ├── LocateControl.jsx         # Boton centrar en usuario
 │           └── mapIcons.js               # Iconos Leaflet
@@ -248,6 +279,9 @@ Quick-Arrival-App/
 | `GET /api/stops-nearby` | Paradas cercanas para una linea. Params: `lat`, `lng`, `line` |
 | `GET /api/arrivals` | Tiempos EMT o CRTM con cache compartida. Param: `codStop` |
 | `GET /api/traffic` | Incidencias TomTom con cache 5 min y bbox snap. Params: `minLon`, `minLat`, `maxLon`, `maxLat` |
+| `GET /api/reports` | Reportes activos de las ultimas 2h. Params: `lineName`, `busId` (opcional) |
+| `POST /api/reports` | Crear reporte. Body: `type`, `metadata`, `description`, `lat`, `lng`, `lineName`, `busId` |
+| `POST /api/report-votes` | Votar un reporte (👍/👎). Body: `reportId`, `voteType` |
 
 ---
 
@@ -310,6 +344,28 @@ VITE_TOMTOM_API_KEY
 | `user_id` | uuid | FK a auth.users (RLS) |
 | `stop_id` | bigint | FK a static_stops |
 | `alias` | text | Nombre personalizado (ej: "Casa") |
+
+### Tabla `reports` — reportes colaborativos en bus
+
+| Columna | Tipo | Descripcion |
+|---------|------|-------------|
+| `id` | uuid PK | Generado automaticamente |
+| `user_id` | uuid | FK a auth.users |
+| `type` | text | Categoria: seats, punctuality, crowding, noise, temperature, driver, accessibility |
+| `metadata` | jsonb | `{ value: "opcion", busId: "vehicleId" }` — busId aisla el reporte al bus concreto |
+| `description` | text | Comentario libre (max 150 chars) |
+| `lat` / `lng` | float | Coordenadas al momento del reporte |
+| `line_name` | text | Nombre de la linea (ej: "27") |
+| `status` | text | `active` — los inactivos se ignoran |
+| `created_at` | timestamptz | Timestamp de creacion (reportes > 2h se excluyen en consultas) |
+
+### Tabla `report_votes` — votos en reportes
+
+| Columna | Tipo | Descripcion |
+|---------|------|-------------|
+| `report_id` | uuid | FK a reports |
+| `user_id` | uuid | FK a auth.users |
+| `vote_type` | text | `up` o `down` |
 
 ---
 

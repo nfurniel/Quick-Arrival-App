@@ -691,6 +691,36 @@
   color: #555;
 }
 
+.tracking-status {
+  margin-top: 8px;
+  font-size: 0.78rem;
+  padding: 7px 10px;
+  border-radius: 8px;
+  line-height: 1.4;
+
+  &--loading {
+    background: rgba(59, 130, 246, 0.08);
+    color: #2563eb;
+  }
+
+  &--timeout {
+    background: rgba(245, 158, 11, 0.1);
+    color: #b45309;
+  }
+}
+
+.dark-panel {
+  & .tracking-status--loading {
+    background: rgba(59, 130, 246, 0.15);
+    color: #93c5fd;
+  }
+
+  & .tracking-status--timeout {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+  }
+}
+
 .live-bus-actions {
   display: flex;
   gap: 8px;

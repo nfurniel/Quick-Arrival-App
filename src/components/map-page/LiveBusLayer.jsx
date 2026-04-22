@@ -23,15 +23,17 @@ async function fetchRoute(fromLat, fromLng, toLat, toLng) {
 }
 
 // Componente que muestra el bus moviéndose en tiempo real con ruta
-export default function LiveBusLayer({ selectedBus }) {
+export default function LiveBusLayer({ selectedBus, onStatusChange }) {
   const [busLocations, setBusLocations] = useState([]);
   const [routePath, setRoutePath] = useState([]);
   const map = useMap();
   const yaCentrado = useRef(false);
+  const hasLocation = useRef(false);
 
   // Resetear cuando cambiamos de bus
   useEffect(() => {
     yaCentrado.current = false;
+    hasLocation.current = false;
     setBusLocations([]);
     setRoutePath([]);
   }, [selectedBus]);
@@ -40,8 +42,17 @@ export default function LiveBusLayer({ selectedBus }) {
   useEffect(() => {
     if (!selectedBus) return;
 
+    hasLocation.current = false;
+    onStatusChange?.('loading');
+
     let timeoutId;
+    let timeoutWarning;
     let montado = true;
+
+    // Si tras 10s no hay ubicación, avisar al usuario
+    timeoutWarning = setTimeout(() => {
+      if (!hasLocation.current && montado) onStatusChange?.('timeout');
+    }, 10000);
 
     async function pedirUbicacion() {
       try {
@@ -55,6 +66,12 @@ export default function LiveBusLayer({ selectedBus }) {
         );
 
         if (ubicaciones && ubicaciones.length > 0 && montado) {
+          if (!hasLocation.current) {
+            hasLocation.current = true;
+            clearTimeout(timeoutWarning);
+            onStatusChange?.('found');
+          }
+
           // Si hay varios buses en la misma línea, elegir el más cercano a la parada
           let busParaRuta = ubicaciones[0];
           if (ubicaciones.length > 1 && selectedBus.stopLat && selectedBus.stopLng) {
@@ -106,6 +123,7 @@ export default function LiveBusLayer({ selectedBus }) {
     return () => {
       montado = false;
       clearTimeout(timeoutId);
+      clearTimeout(timeoutWarning);
     };
   }, [selectedBus, map]);
 

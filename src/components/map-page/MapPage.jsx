@@ -70,6 +70,7 @@ export default function MapPage() {
   const [trafficVisible, setTrafficVisible] = useState(false);
   const [onBus, setOnBus] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [trackingStatus, setTrackingStatus] = useState('loading'); // 'loading' | 'found' | 'timeout'
   const [reportToast, setReportToast] = useState(false);
   const [reportsPanelKey, setReportsPanelKey] = useState(0);
   const toastTimerRef = useRef(null);
@@ -79,6 +80,7 @@ export default function MapPage() {
   useEffect(() => {
     setOnBus(false);
     setReportModalOpen(false);
+    setTrackingStatus('loading');
   }, [selectedBus?.line, selectedBus?.codStop]);
 
   // Limpiar el timer del toast si el componente desmonta
@@ -262,7 +264,7 @@ export default function MapPage() {
         />
 
         {/* Bus en tiempo real */}
-        {selectedBus && <LiveBusLayer selectedBus={selectedBus} />}
+        {selectedBus && <LiveBusLayer selectedBus={selectedBus} onStatusChange={setTrackingStatus} />}
 
         {/* Marcador del usuario */}
         {userLocation && (
@@ -381,6 +383,12 @@ export default function MapPage() {
           <div className="live-bus-panel-body">
             <p>Hacia: {selectedBus.destination}</p>
             <p>Parada: {selectedBus.stopName}</p>
+            {trackingStatus === 'loading' && (
+              <p className="tracking-status tracking-status--loading">Buscando el bus en el mapa...</p>
+            )}
+            {trackingStatus === 'timeout' && (
+              <p className="tracking-status tracking-status--timeout">No se pudo localizar el bus. Puede que aún no tenga GPS activo. Seguimos intentando...</p>
+            )}
             <div className="live-bus-actions">
               <button
                 className={`on-bus-btn ${onBus ? 'active' : ''}`}
@@ -407,6 +415,7 @@ export default function MapPage() {
           <ReportsPanel
             key={reportsPanelKey}
             lineName={selectedBus.line}
+            busId={selectedBus.busId || null}
             isDarkMode={isDarkMode}
             onBus={onBus}
           />
