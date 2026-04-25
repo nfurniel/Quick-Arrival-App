@@ -7,11 +7,9 @@ import { useNavigate } from 'react-router-dom';
 import './MapPage.css';
 import { supabase } from '../../supabaseClient';
 import Sidebar, { avatars } from './Sidebar';
-import BusSearchModal from './BusSearchModal';
 import LocateControl from './LocateControl';
 import BusStopsLayer from './BusStopsLayer';
 import LiveBusLayer from './LiveBusLayer';
-import HighlightedStopsLayer from './HighlightedStopsLayer';
 import StopBottomSheet from './StopBottomSheet';
 import usePresence from '../../hooks/usePresence';
 import { loadFavourites, addFavourite, removeFavourite } from '../../services/favoritesService';
@@ -61,8 +59,6 @@ export default function MapPage() {
   const [userName, setUserName] = useState('');
   const [selectedAvatar, setSelectedAvatar] = useState(0);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
-  const [busSearchOpen, setBusSearchOpen] = useState(true);
-  const [highlightedStops, setHighlightedStops] = useState([]);
   const [selectedStop, setSelectedStop] = useState(null);
   const [favourites, setFavourites] = useState([]);
   const [flyToTarget, setFlyToTarget] = useState(null);
@@ -306,16 +302,6 @@ export default function MapPage() {
           />
         )}
 
-        {/* Paradas destacadas por busqueda (ocultas durante tracking) */}
-        {highlightedStops.length > 0 && !selectedBus && (
-          <HighlightedStopsLayer
-            stops={highlightedStops}
-            isDarkMode={isDarkMode}
-            onSelectBus={setSelectedBus}
-            onSelectStop={setSelectedStop}
-          />
-        )}
-
         <TrafficIncidentsLayer visible={trafficVisible} />
 
         {trafficVisible && (
@@ -357,21 +343,10 @@ export default function MapPage() {
         onToggleAvatarPicker={() => setShowAvatarPicker(!showAvatarPicker)}
         greeting={greeting}
         onLogout={handleLogout}
-        onSearchBus={() => { setSidebarOpen(false); setBusSearchOpen(true); }}
         favourites={favourites}
         onSelectFavourite={handleSelectFavourite}
         onRemoveFavourite={handleRemoveFavourite}
       />
-
-      {/* Boton para quitar paradas destacadas */}
-      {highlightedStops.length > 0 && (
-        <button
-          className="clear-highlights-btn"
-          onClick={() => setHighlightedStops([])}
-        >
-          ✕ Quitar resalto
-        </button>
-      )}
 
       {/* Panel de seguimiento del bus */}
       {selectedBus && (
@@ -444,18 +419,6 @@ export default function MapPage() {
           onCancel={() => setFavModal(null)}
         />
       )}
-
-      {/* Modal de busqueda de bus */}
-      <BusSearchModal
-        isOpen={busSearchOpen}
-        isDarkMode={isDarkMode}
-        userLocation={userLocation}
-        onResults={(stops) => {
-          setHighlightedStops(stops);
-          setBusSearchOpen(false);
-        }}
-        onDismiss={() => setBusSearchOpen(false)}
-      />
 
       {/* Modal de reporte de incidencia */}
       {reportModalOpen && selectedBus && (

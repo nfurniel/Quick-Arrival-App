@@ -2,8 +2,6 @@ import React, { useState } from 'react';
 import './Sidebar.css';
 import lightThemeIcon from '../../assets/light-theme-icon.png';
 import darkThemeIcon from '../../assets/dark-theme-icon.png';
-import searchBlack from '../../assets/search-black.png';
-import searchWhite from '../../assets/search-white.png';
 
 // Avatares
 import avatar1 from '../../assets/avatar/avatar1.png';
@@ -72,7 +70,6 @@ export default function Sidebar({
   onToggleAvatarPicker,
   greeting,
   onLogout,
-  onSearchBus,
   favourites,
   onSelectFavourite,
   onRemoveFavourite,
@@ -150,15 +147,6 @@ export default function Sidebar({
 
         {/* Opciones del sidebar */}
         <div className="sidebar-menu">
-          <button className="sidebar-menu-item" onClick={onSearchBus}>
-            <img
-              src={isDarkMode ? searchWhite : searchBlack}
-              alt="Buscar"
-              className="sidebar-menu-icon"
-            />
-            <span>Buscar bus cerca de mí</span>
-          </button>
-
           <button className="sidebar-menu-item" onClick={onToggleDarkMode}>
             <img
               src={isDarkMode ? lightThemeIcon : darkThemeIcon}

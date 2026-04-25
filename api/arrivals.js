@@ -2,24 +2,32 @@
 // Guarda los resultados en caché para que varios usuarios que consulten
 // la misma parada no generen peticiones repetidas a EMT/CRTM.
 
+// Usamos un Map para guardar los datos en memoria del servidor
+// La clave es el codStop y el valor son { data, timestamp }
 const arrivalsCache = new Map();
+
 const CACHE_TTL = {
-  '6': 20 * 1000, // EMT: 20 segundos
-  '8': 30 * 1000, // CRTM: 30 segundos
+  '6': 20 * 1000, // EMT (buses urbanos): 20 segundos
+  '8': 30 * 1000, // CRTM (interurbanos): 30 segundos, cambian menos rápido
 };
 const DEFAULT_TTL = 25 * 1000;
 
+// Guardamos el token de EMT entre peticiones para no pedir uno nuevo cada vez
 let emtToken = null;
 let emtTokenExpiry = null;
 
 async function getEmtToken() {
+  // Si ya tenemos un token válido (con 1 minuto de margen), lo reutilizamos
   if (emtToken && emtTokenExpiry && Date.now() < emtTokenExpiry - 60000) {
     return emtToken;
   }
+
+  // Intentamos primero con v2, si falla probamos v1
   const urls = [
     'https://openapi.emtmadrid.es/v2/mobilitylabs/user/login/',
     'https://openapi.emtmadrid.es/v1/mobilitylabs/user/login/',
   ];
+
   for (const url of urls) {
     try {
       const r = await fetch(url, {
@@ -30,16 +38,27 @@ async function getEmtToken() {
           passKey: process.env.EMT_PASSKEY || '',
         },
       });
+
       if (!r.ok) continue;
+
       const json = await r.json();
-      const data = json.data?.[0] || json.data;
-      if (data?.accessToken) {
+
+      // La respuesta puede venir como array (v2) o directo (v1)
+      let data = json.data;
+      if (Array.isArray(json.data) && json.data.length > 0) {
+        data = json.data[0];
+      }
+
+      if (data && data.accessToken) {
         emtToken = data.accessToken;
         emtTokenExpiry = Date.now() + (data.tokenSecExpiration || 86400) * 1000;
         return emtToken;
       }
-    } catch { /* intentar con la siguiente URL */ }
+    } catch {
+      // esta URL falló, probamos la siguiente
+    }
   }
+
   throw new Error('No se pudo obtener token EMT');
 }
 
@@ -73,32 +92,47 @@ async function fetchEmtArrivals(stopId) {
   if (!r.ok) throw new Error(`EMT ${r.status}`);
 
   const json = await r.json();
-  const datos = json.data?.[0]?.Arrive || [];
 
-  return datos
-    .filter(a => a.estimateArrive > 0 && a.estimateArrive < 999999)
-    .map(a => ({
-      line:           a.line || '?',
-      lineDescription:`Linea ${a.line}`,
-      destination:    a.destination || '',
-      minutes:        Math.round(a.estimateArrive / 60),
-      arrivalTime:    new Date(Date.now() + a.estimateArrive * 1000)
-                        .toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
-      codMode:        '6',
-      codLine:        String(a.line || ''),
-      direction:      1,
-      busId:          a.bus,
-      distanceMeters: a.DistanceBus,
-      busLocation:    a.geometry?.coordinates
-        ? { longitude: a.geometry.coordinates[0], latitude: a.geometry.coordinates[1] }
-        : null,
-    }))
-    .slice(0, 6);
+  // Los datos vienen dentro de data[0].Arrive
+  let datos = [];
+  if (json.data && json.data[0] && json.data[0].Arrive) {
+    datos = json.data[0].Arrive;
+  }
+
+  // Filtramos los que tienen tiempo válido (999999 = sin datos)
+  const validos = datos.filter(a => a.estimateArrive > 0 && a.estimateArrive < 999999);
+
+  const arrivals = validos.map(a => {
+    // Si la API da la posición GPS del bus la guardamos, si no dejamos null
+    let busLocation = null;
+    if (a.geometry && a.geometry.coordinates) {
+      busLocation = {
+        longitude: a.geometry.coordinates[0],
+        latitude: a.geometry.coordinates[1],
+      };
+    }
+
+    return {
+      line:            a.line || '?',
+      lineDescription: `Linea ${a.line}`,
+      destination:     a.destination || '',
+      minutes:         Math.round(a.estimateArrive / 60),
+      arrivalTime:     new Date(Date.now() + a.estimateArrive * 1000)
+                         .toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+      codMode:         '6',
+      codLine:         String(a.line || ''),
+      direction:       1,
+      busId:           a.bus,
+      distanceMeters:  a.DistanceBus,
+      busLocation,
+    };
+  });
+
+  return arrivals.slice(0, 6);
 }
 
 async function fetchCrtmArrivals(codStop) {
-  // Se envían cabeceras que simulan que la petición viene de la web del CRTM,
-  // porque su API bloquea peticiones externas.
+  // Simulamos que la petición viene de la web del CRTM porque su API bloquea las externas
   const r = await fetch(
     `https://www.crtm.es/widgets/api/GetStopsTimes.php?codStop=${codStop}&type=0&orderBy=2&stopTimesByIti=${codStop}&_=${Date.now()}`,
     {
@@ -117,21 +151,28 @@ async function fetchCrtmArrivals(codStop) {
   const timesData = json?.stopTimes?.times?.Time;
   if (!timesData) return [];
 
-  const timesArray = Array.isArray(timesData) ? timesData : [timesData];
+  // A veces la API devuelve un objeto suelto en vez de un array, lo normalizamos
+  let timesArray;
+  if (Array.isArray(timesData)) {
+    timesArray = timesData;
+  } else {
+    timesArray = [timesData];
+  }
+
   const now = new Date();
 
   return timesArray
     .map(t => {
       const arrivalTime = new Date(t.time);
       return {
-        line:           t.line?.shortDescription || '?',
-        lineDescription:t.line?.description || '',
-        destination:    t.destination || '',
-        minutes:        Math.max(0, Math.round((arrivalTime - now) / 60000)),
-        arrivalTime:    arrivalTime.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
-        codMode:        t.line?.codMode || '8',
-        codLine:        t.line?.codLine || '',
-        direction:      t.direction || 1,
+        line:            t.line?.shortDescription || '?',
+        lineDescription: t.line?.description || '',
+        destination:     t.destination || '',
+        minutes:         Math.max(0, Math.round((arrivalTime - now) / 60000)),
+        arrivalTime:     arrivalTime.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+        codMode:         t.line?.codMode || '8',
+        codLine:         t.line?.codLine || '',
+        direction:       t.direction || 1,
       };
     })
     .filter(t => t.minutes >= 0)
@@ -146,10 +187,17 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Falta parámetro: codStop' });
   }
 
+  // El modo se saca del prefijo del codStop: 6_xxx = EMT, 8_xxx = CRTM
   const mode = codStop.split('_')[0];
-  const ttl = CACHE_TTL[mode] ?? DEFAULT_TTL;
+
+  let ttl = DEFAULT_TTL;
+  if (CACHE_TTL[mode]) {
+    ttl = CACHE_TTL[mode];
+  }
+
   const cached = arrivalsCache.get(codStop);
 
+  // Si los datos en caché siguen siendo recientes, los devolvemos sin llamar a la API
   if (cached && Date.now() - cached.timestamp < ttl) {
     const age = Math.round((Date.now() - cached.timestamp) / 1000);
     return res.status(200).json({ arrivals: cached.data, cached: true, age, error: false });
@@ -163,11 +211,12 @@ export default async function handler(req, res) {
       arrivals = await fetchCrtmArrivals(codStop);
     }
 
+    // Guardamos en caché para las próximas peticiones
     arrivalsCache.set(codStop, { data: arrivals, timestamp: Date.now() });
     return res.status(200).json({ arrivals, cached: false, age: 0, error: false });
 
   } catch (error) {
-    // Si falla la API, devolver los últimos datos guardados aunque estén desactualizados
+    // Si la API falla pero tenemos datos aunque sean viejos, los devolvemos igualmente
     if (cached) {
       const age = Math.round((Date.now() - cached.timestamp) / 1000);
       return res.status(200).json({ arrivals: cached.data, cached: true, stale: true, age, error: false });

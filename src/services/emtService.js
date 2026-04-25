@@ -16,7 +16,7 @@ export async function emtLogin() {
   }
 
   // Las credenciales las inyecta el proxy del servidor (emt-proxy.js)
-  // desde variables de entorno. No se envían desde el frontend.
+  // desde variables de entorno. No las envio desde el FE
 
   // Probar diferentes endpoints de login por si alguno falla
   const intentos = [

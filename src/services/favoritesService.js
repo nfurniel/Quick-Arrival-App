@@ -6,7 +6,8 @@ import { supabase } from '../supabaseClient';
 
 export async function loadFavourites() {
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return [];
+  if (!user)
+    return [];
 
   const { data, error } = await supabase
     .from('favourites')
@@ -22,17 +23,17 @@ export async function loadFavourites() {
   return (data || []).map(fav => {
     const s = fav.static_stops;
     return {
-      id:          fav.id,
-      stopId:      fav.stop_id,
-      alias:       fav.alias,
-      name:        fav.alias || s?.name || 'Parada',
-      lat:         s?.lat,
-      lng:         s?.lng,
-      codMode:     s?.cod_mode,
+      id: fav.id,
+      stopId: fav.stop_id,
+      alias: fav.alias,
+      name: fav.alias || s?.name || 'Parada',
+      lat: s?.lat,
+      lng: s?.lng,
+      codMode: s?.cod_mode,
       codEstacion: s?.cod_estacion,
-      lines:       s?.lines ? s.lines.split(',').map(l => l.trim()).filter(Boolean) : [],
-      codStop:     s ? `${s.cod_mode}_${s.cod_estacion}` : '',
-      typeLabel:   s?.cod_mode === 8 ? 'Interurbano' : 'Urbano',
+      lines: s?.lines ? s.lines.split(',').map(l => l.trim()).filter(Boolean) : [],
+      codStop: s ? `${s.cod_mode}_${s.cod_estacion}` : '',
+      typeLabel: s?.cod_mode === 8 ? 'Interurbano' : 'Urbano',
     };
   });
 }

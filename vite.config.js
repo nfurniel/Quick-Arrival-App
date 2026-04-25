@@ -20,6 +20,7 @@ let devEmtToken = null;
 let devEmtTokenExpiry = null;
 
 // Plugin que simula las Edge Functions localmente durante el desarrollo
+// Esto es para poder probar localmente todo para luego subirlo a produccion 
 function localApiPlugin(env) {
   const serviceKey = env.SUPABASE_SERVICE_KEY;
 
@@ -224,7 +225,7 @@ function localApiPlugin(env) {
               const reports = raw.map(({ report_votes, ...rep }) => ({
                 ...rep,
                 votes: {
-                  up:   (report_votes || []).filter(v => v.vote_type === 'up').length,
+                  up: (report_votes || []).filter(v => v.vote_type === 'up').length,
                   down: (report_votes || []).filter(v => v.vote_type === 'down').length,
                 },
               }));
@@ -348,7 +349,7 @@ function localApiPlugin(env) {
               { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } }
             );
             const votes = await countsRes.json();
-            const up   = votes.filter(v => v.vote_type === 'up').length;
+            const up = votes.filter(v => v.vote_type === 'up').length;
             const down = votes.filter(v => v.vote_type === 'down').length;
             console.log(`[local-api/report-votes] report ${reportId}: ${up}👍 ${down}👎`);
             return send(res, 200, { up, down, userVote: voteType });
@@ -372,8 +373,8 @@ function localApiPlugin(env) {
           const snapped = {
             minLon: (Math.floor(parseFloat(minLon) / GRID) * GRID).toFixed(3),
             minLat: (Math.floor(parseFloat(minLat) / GRID) * GRID).toFixed(3),
-            maxLon: (Math.ceil(parseFloat(maxLon)  / GRID) * GRID).toFixed(3),
-            maxLat: (Math.ceil(parseFloat(maxLat)  / GRID) * GRID).toFixed(3),
+            maxLon: (Math.ceil(parseFloat(maxLon) / GRID) * GRID).toFixed(3),
+            maxLat: (Math.ceil(parseFloat(maxLat) / GRID) * GRID).toFixed(3),
           };
           const cacheKey = `${snapped.minLon},${snapped.minLat},${snapped.maxLon},${snapped.maxLat}`;
 

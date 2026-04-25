@@ -37,8 +37,8 @@ Proyecto desarrollado como Trabajo de Fin de Ciclo (TFC) de 2o de DAW.
 ┌──────────────────────▼──────────────────────────────────────┐
 │              BACKEND — Vercel Edge Functions                  │
 │                                                              │
-│  /api/stops          /api/lines                              │
-│  /api/stops-nearby   /api/arrivals                           │
+│  /api/stops        /api/lines       /api/arrivals            │
+│  /api/reports      /api/report-votes                         │
 │  /api/traffic        ← incidencias TomTom con cache global   │
 └────────┬─────────────────────────┬────────────────┬──────────┘
          │                         │                │
@@ -130,14 +130,14 @@ Usuario hace clic en una fila de llegada (linea + destino)
 ### 5. Trafico en tiempo real
 
 ```
-Usuario activa el boton 🚦
+Usuario activa el boton de trafico
   │
   ├─▶ TrafficIncidentsLayer.jsx (accidentes, obras, cortes)
   │     └─▶ GET /api/traffic?minLon=...&minLat=...&maxLon=...&maxLat=...
   │           └─▶ api/traffic.js redondea el bbox a una cuadricula de ~2km
   │                 └─▶ cache 5 minutos — vistas cercanas reutilizan la misma respuesta
   │                       └─▶ TomTom Traffic Incidents API v5
-  │                             └─▶ marcadores con emoji segun tipo de incidencia
+  │                             └─▶ marcadores con icono segun tipo de incidencia
   │
   └─▶ TileLayer flow tiles (colores en carreteras)
         └─▶ Leaflet pide imagenes directamente a TomTom
@@ -161,22 +161,7 @@ Al seleccionar un favorito en el Sidebar: el mapa vuela a la parada y abre un po
 
 ---
 
-### 7. Busqueda por numero de linea
-
-```
-Usuario abre BusSearchModal y escribe un numero de linea
-  └─▶ Fase 1 — Autocompletado:
-        └─▶ GET /api/lines → lista de lineas unicas (cache 1 hora)
-
-  └─▶ Fase 2 — Paradas cercanas:
-        └─▶ GET /api/stops-nearby?lat=...&lng=...&line=...
-              └─▶ calcula distancia Haversine a cada parada
-                    └─▶ devuelve las 4 mas cercanas con sus tiempos
-```
-
----
-
-### 8. Reportes colaborativos
+### 7. Reportes colaborativos
 
 ```
 Usuario activa "Voy en este bus" en el panel de seguimiento
@@ -192,14 +177,14 @@ Usuario activa "Voy en este bus" en el panel de seguimiento
 ReportsPanel.jsx (dentro del panel de seguimiento)
   └─▶ GET /api/reports?lineName=X&busId=Y   ← filtra por bus concreto, no por toda la linea
         └─▶ agrupa por categoria → mostrando la opcion mas frecuente por grupo
-              └─▶ usuarios con "Voy en este bus" pueden votar 👍/👎 cada reporte
+              └─▶ usuarios con "Voy en este bus" pueden votar cada reporte
 ```
 
 Los reportes caducan automaticamente en 2 horas. El `busId` del vehiculo se guarda en el campo `metadata` JSONB para aislar los reportes por bus concreto.
 
 ---
 
-### 9. Presencia colaborativa
+### 8. Presencia colaborativa
 
 ```
 MapPage.jsx monta usePresence(userLocation, userName, avatarIndex)
@@ -217,11 +202,10 @@ Quick-Arrival-App/
 ├── api/                          # Backend — Edge Functions de Vercel
 │   ├── stops.js                  # GET /api/stops — paradas por viewport
 │   ├── lines.js                  # GET /api/lines — todas las lineas unicas
-│   ├── stops-nearby.js           # GET /api/stops-nearby — paradas cercanas por linea
 │   ├── arrivals.js               # GET /api/arrivals — tiempos EMT/CRTM con cache compartida
 │   ├── traffic.js                # GET /api/traffic — incidencias TomTom con cache y bbox snap
 │   ├── reports.js                # GET + POST /api/reports — reportes colaborativos por bus
-│   ├── report-votes.js           # POST /api/report-votes — votos 👍/👎 en reportes
+│   ├── report-votes.js           # POST /api/report-votes — votos en reportes
 │   ├── emt-proxy.js              # Proxy EMT (legacy, aun usado para GPS de buses)
 │   └── crtm-proxy.js             # Proxy CRTM con spoofing de Origin/Referer
 │
@@ -247,12 +231,10 @@ Quick-Arrival-App/
 │           ├── BusStopsLayer.jsx         # Capa de paradas con popups
 │           ├── LiveBusLayer.jsx          # Seguimiento GPS del bus
 │           ├── TrafficIncidentsLayer.jsx # Incidencias de trafico (TomTom)
-│           ├── BusSearchModal.jsx        # Busqueda por linea
-│           ├── HighlightedStopsLayer.jsx # Paradas resaltadas
 │           ├── FavouritePopupLayer.jsx   # Popup de parada favorita (desktop)
 │           ├── FavouriteModal.jsx        # Modal para nombrar un favorito
 │           ├── StopBottomSheet.jsx       # Panel inferior de parada (movil)
-│           ├── ReportModal.jsx           # Modal de reporte en 3 pasos (categoria → opcion → confirmar)
+│           ├── ReportModal.jsx           # Modal de reporte en 3 pasos
 │           ├── ReportModal.css
 │           ├── ReportsPanel.jsx          # Panel de reportes agrupados por categoria con votos
 │           ├── ReportsPanel.css
@@ -276,12 +258,11 @@ Quick-Arrival-App/
 |----------|-------------|
 | `GET /api/stops` | Paradas en el viewport. Params: `minLat`, `maxLat`, `minLng`, `maxLng` |
 | `GET /api/lines` | Todas las lineas unicas. Cache HTTP 1 hora |
-| `GET /api/stops-nearby` | Paradas cercanas para una linea. Params: `lat`, `lng`, `line` |
 | `GET /api/arrivals` | Tiempos EMT o CRTM con cache compartida. Param: `codStop` |
 | `GET /api/traffic` | Incidencias TomTom con cache 5 min y bbox snap. Params: `minLon`, `minLat`, `maxLon`, `maxLat` |
 | `GET /api/reports` | Reportes activos de las ultimas 2h. Params: `lineName`, `busId` (opcional) |
 | `POST /api/reports` | Crear reporte. Body: `type`, `metadata`, `description`, `lat`, `lng`, `lineName`, `busId` |
-| `POST /api/report-votes` | Votar un reporte (👍/👎). Body: `reportId`, `voteType` |
+| `POST /api/report-votes` | Votar un reporte. Body: `reportId`, `voteType` |
 
 ---
 
