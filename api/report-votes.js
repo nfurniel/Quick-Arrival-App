@@ -1,5 +1,6 @@
 const SUPABASE_URL = 'https://tumoqeuueqbvfstdhdmn.supabase.co';
 
+// Comprueba que el token del usuario es válido preguntándole a Supabase
 async function verifyUser(authHeader, serviceKey) {
   if (!authHeader?.startsWith('Bearer ')) return null;
   const r = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
@@ -23,7 +24,7 @@ export default async function handler(req, res) {
 
   const { reportId, voteType } = req.body || {};
 
-  // reportId debe ser entero positivo
+  // reportId debe ser entero positivo (no dejamos pasar strings ni decimales)
   const reportIdN = parseInt(reportId, 10);
   if (!reportId || isNaN(reportIdN) || reportIdN <= 0 || String(reportIdN) !== String(reportId)) {
     return res.status(400).json({ error: 'reportId inválido' });
@@ -33,16 +34,19 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'voteType debe ser "up" o "down"' });
   }
 
-  // Comprobar que el reporte existe y está activo
+  // Comprobamos que el reporte existe y sigue activo antes de guardar el voto
   const reportCheck = await fetch(
     `${SUPABASE_URL}/rest/v1/reports?id=eq.${reportIdN}&status=eq.active&select=id&limit=1`,
     { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } }
   );
-  if (!reportCheck.ok || (await reportCheck.json()).length === 0) {
+  const reportData = await reportCheck.json();
+  if (!reportCheck.ok || reportData.length === 0) {
     return res.status(404).json({ error: 'Reporte no encontrado o ya no está activo' });
   }
 
   try {
+    // Upsert: si ya existe un voto de este usuario para este reporte, lo sobreescribe
+    // así se puede cambiar de 👍 a 👎 sin duplicar filas
     const r = await fetch(`${SUPABASE_URL}/rest/v1/report_votes`, {
       method: 'POST',
       headers: {
@@ -59,6 +63,7 @@ export default async function handler(req, res) {
       throw new Error(`Supabase ${r.status}: ${body}`);
     }
 
+    // Devolvemos el conteo actualizado de votos para actualizar la UI al momento
     const countsRes = await fetch(
       `${SUPABASE_URL}/rest/v1/report_votes?report_id=eq.${reportIdN}&select=vote_type`,
       { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } }

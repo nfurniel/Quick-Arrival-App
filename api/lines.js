@@ -45,13 +45,14 @@ export default async function handler(request) {
       }
     });
 
+    // Ordenamos: primero las líneas numéricas (27, 148...) y al final las que tienen letras (C1, T1...)
     const lines = [...linesSet].sort((a, b) => {
       const numA = parseInt(a);
       const numB = parseInt(b);
-      if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
-      if (!isNaN(numA)) return -1;
-      if (!isNaN(numB)) return 1;
-      return a.localeCompare(b);
+      if (!isNaN(numA) && !isNaN(numB)) return numA - numB; // las dos son números
+      if (!isNaN(numA)) return -1; // a es número, va antes
+      if (!isNaN(numB)) return 1;  // b es número, va antes
+      return a.localeCompare(b);   // las dos son letras, orden alfabético
     });
 
     return new Response(JSON.stringify(lines), {

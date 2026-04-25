@@ -27,12 +27,16 @@ export default async function handler(request) {
     const otherParams = new URLSearchParams(url.searchParams);
     otherParams.delete('path');
     const qs = otherParams.toString();
-    const targetUrl = 'https://openapi.emtmadrid.es/' + path + (qs ? '?' + qs : '');
+
+    // Si hay query params adicionales los añadimos, si no dejamos la URL limpia
+    let targetUrl = 'https://openapi.emtmadrid.es/' + path;
+    if (qs) {
+      targetUrl = targetUrl + '?' + qs;
+    }
 
     console.log('[Proxy EMT] Target URL:', targetUrl);
     console.log('[Proxy EMT] Method:', request.method);
 
-    // Construir cabeceras para la petición a EMT
     const headers = new Headers();
 
     // Si es un endpoint de login, inyectar credenciales desde env vars del servidor
@@ -44,7 +48,7 @@ export default async function handler(request) {
       if (process.env.EMT_PASSKEY) headers.set('passKey', process.env.EMT_PASSKEY);
       console.log('[Proxy EMT] Login request — credenciales inyectadas desde env vars');
     } else {
-      // Para peticiones normales, reenviar el accessToken del frontend
+      // Para el resto de peticiones, reenviamos el token que manda el frontend
       const accessToken = request.headers.get('accesstoken');
       if (accessToken) headers.set('accessToken', accessToken);
     }
@@ -53,7 +57,6 @@ export default async function handler(request) {
     const contentType = request.headers.get('content-type');
     if (contentType) headers.set('Content-Type', contentType);
 
-    // Leer body si es POST
     let body = null;
     if (request.method === 'POST') {
       body = await request.text();

@@ -20,12 +20,13 @@ export async function getStopsInBounds(minLng, minLat, maxLng, maxLat) {
   }
 }
 
-// Caché de todas las líneas únicas
+// Esta es la caché de todas las líneas únicas
 let allLinesCache = null;
 
 // Obtener todas las líneas únicas disponibles
 export async function getAllLines() {
-  if (allLinesCache) return allLinesCache;
+  if (allLinesCache)
+    return allLinesCache;
 
   try {
     const response = await fetch('/api/lines');
@@ -43,21 +44,3 @@ export async function getAllLines() {
   }
 }
 
-// Buscar las paradas más cercanas al usuario que tengan una línea concreta
-// Devuelve max 4 paradas ordenadas por distancia
-export async function getNearbyStopsForLine(userLat, userLng, lineNumber, radiusKm = 1.5) {
-  try {
-    const params = new URLSearchParams({ lat: userLat, lng: userLng, line: lineNumber, radius: radiusKm });
-    const response = await fetch(`/api/stops-nearby?${params}`);
-
-    if (!response.ok) {
-      console.error('Error buscando paradas por línea:', response.status);
-      return [];
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Error buscando paradas por línea:', error.message);
-    return [];
-  }
-}

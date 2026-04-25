@@ -2,6 +2,7 @@ const SUPABASE_URL = 'https://tumoqeuueqbvfstdhdmn.supabase.co';
 
 const VALID_TYPES = ['seats', 'punctuality', 'crowding', 'noise', 'temperature', 'driver', 'accessibility'];
 
+// Para cada tipo de reporte, los valores que acepta
 const VALID_OPTIONS = {
   seats:         ['many', 'some', 'few', 'none'],
   punctuality:   ['early', 'on_time', 'slightly_late', 'very_late'],
@@ -16,6 +17,7 @@ const VALID_OPTIONS = {
 const LAT_MIN = 27.5, LAT_MAX = 44.0;
 const LNG_MIN = -18.5, LNG_MAX = 4.5;
 
+// Quitamos etiquetas HTML para evitar que alguien inyecte código en los textos
 function stripHtml(str) {
   return str.replace(/<[^>]*>/g, '').trim();
 }
@@ -44,10 +46,13 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Parámetro lineName inválido' });
     }
 
-    const busId = req.query.busId && String(req.query.busId).length <= 30
-      ? String(req.query.busId)
-      : null;
+    // El busId es opcional, solo lo usamos si viene y no es demasiado largo
+    let busId = null;
+    if (req.query.busId && String(req.query.busId).length <= 30) {
+      busId = String(req.query.busId);
+    }
 
+    // Solo mostramos reportes de las últimas 2 horas
     const since = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
     let params = `select=id,type,metadata,description,line_name,created_at,report_votes(vote_type,user_id)&status=eq.active&line_name=eq.${encodeURIComponent(lineName)}&created_at=gte.${since}&order=created_at.desc&limit=20`;
     if (busId) params += `&metadata->>busId=eq.${encodeURIComponent(busId)}`;
@@ -59,6 +64,7 @@ export default async function handler(req, res) {
       if (!r.ok) throw new Error(`Supabase ${r.status}`);
       const raw = await r.json();
 
+      // Transformamos los datos: contamos votos y los separamos del reporte
       const reports = raw.map(({ report_votes, ...report }) => ({
         ...report,
         votes: {
@@ -91,7 +97,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Opción no válida para este tipo de reporte' });
     }
 
-    // Coordenadas
+    // Coordenadas — tienen que estar dentro de España
     const latN = parseFloat(lat);
     const lngN = parseFloat(lng);
     if (isNaN(latN) || isNaN(lngN) || latN < LAT_MIN || latN > LAT_MAX || lngN < LNG_MIN || lngN > LNG_MAX) {
@@ -104,22 +110,24 @@ export default async function handler(req, res) {
     }
     const cleanLineName = stripHtml(lineName).slice(0, 20);
 
-    // Descripción opcional
+    // Descripción opcional (texto libre del usuario)
     let cleanDescription = null;
     if (description) {
       if (typeof description !== 'string') return res.status(400).json({ error: 'Descripción inválida' });
       cleanDescription = stripHtml(description).slice(0, 150) || null;
     }
 
-    // Validar busId opcional
-    const cleanBusId = busId && typeof busId === 'string' && busId.length <= 30
-      ? busId.trim()
-      : null;
+    // El busId es opcional, solo lo guardamos si viene y es válido
+    let cleanBusId = null;
+    if (busId && typeof busId === 'string' && busId.length <= 30) {
+      cleanBusId = busId.trim();
+    }
 
-    // Duplicado: mismo usuario, mismo tipo, mismo bus (o línea si no hay busId) en las últimas 2h
+    // Comprobamos que el mismo usuario no haya reportado lo mismo en las últimas 2h
     const since = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
     let dupUrl = `${SUPABASE_URL}/rest/v1/reports?user_id=eq.${user.id}&type=eq.${type}&line_name=eq.${encodeURIComponent(cleanLineName)}&status=eq.active&created_at=gte.${since}&select=id&limit=1`;
     if (cleanBusId) dupUrl += `&metadata->>busId=eq.${encodeURIComponent(cleanBusId)}`;
+
     const dupCheck = await fetch(dupUrl,
       { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } }
     );
@@ -131,6 +139,12 @@ export default async function handler(req, res) {
     }
 
     try {
+      // Construimos el objeto metadata: siempre lleva el valor, y el busId solo si existe
+      const metadataToSave = { value: optionValue };
+      if (cleanBusId) {
+        metadataToSave.busId = cleanBusId;
+      }
+
       const r = await fetch(`${SUPABASE_URL}/rest/v1/reports`, {
         method: 'POST',
         headers: {
@@ -140,14 +154,14 @@ export default async function handler(req, res) {
           Prefer: 'return=representation',
         },
         body: JSON.stringify({
-          user_id: user.id,
+          user_id:     user.id,
           type,
-          metadata: { value: optionValue, ...(cleanBusId ? { busId: cleanBusId } : {}) },
+          metadata:    metadataToSave,
           description: cleanDescription,
-          lat: latN,
-          lng: lngN,
-          line_name: cleanLineName,
-          status: 'active',
+          lat:         latN,
+          lng:         lngN,
+          line_name:   cleanLineName,
+          status:      'active',
         }),
       });
 
