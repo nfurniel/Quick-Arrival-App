@@ -19,9 +19,6 @@ const STORAGE_KEY_PREFIX = "sb-tumoqeuueqbvfstdhdmn-auth-token";
 
 const customStorage = {
   getItem: (key) => {
-    // Si es un flujo de recovery, ignoramos la sesión guardada para que Supabase
-    // use el token del hash en lugar de hacer auto-login con la sesión anterior.
-    if (isPasswordRecovery) return null;
     return localStorage.getItem(key) || sessionStorage.getItem(key);
   },
   setItem: (key, value) => {
