@@ -8,12 +8,12 @@ import {
 } from 'react-icons/tb';
 
 const TIPOS_INCIDENCIA = {
-  1:  { Icon: TbAlertOctagon, label: 'Accidente',        color: '#dc2626' },
-  6:  { Icon: TbCar,          label: 'Retención',         color: '#f97316' },
-  7:  { Icon: TbAlertTriangle,label: 'Carril cortado',    color: '#f59e0b' },
-  8:  { Icon: TbCircleOff,    label: 'Vía cortada',       color: '#dc2626' },
-  9:  { Icon: TbCone,         label: 'Obras',             color: '#f59e0b' },
-  13: { Icon: TbTool,         label: 'Vehículo averiado', color: '#6b7280' },
+  1:  { Icon: TbAlertOctagon,  label: 'Accidente',        color: '#dc2626' },
+  6:  { Icon: TbCar,           label: 'Retención',         color: '#f97316' },
+  7:  { Icon: TbAlertTriangle, label: 'Carril cortado',    color: '#f59e0b' },
+  8:  { Icon: TbCircleOff,     label: 'Vía cortada',       color: '#dc2626' },
+  9:  { Icon: TbCone,          label: 'Obras',             color: '#f59e0b' },
+  13: { Icon: TbTool,          label: 'Vehículo averiado', color: '#6b7280' },
 };
 const TIPO_DESCONOCIDO = { Icon: TbAlertCircle, label: 'Incidencia', color: '#6b7280' };
 
@@ -31,6 +31,7 @@ function crearIcono(categoria) {
 
 // Extrae las coordenadas [lat, lng] del incidente según su tipo de geometría
 // TomTom puede devolver puntos, líneas o múltiples puntos/líneas
+// Hay 4 tipos de geometria, validar todas *** 
 function obtenerCoordenadas(incidente) {
   const geo = incidente.geometry;
   if (!geo?.coordinates) return null;
