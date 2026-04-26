@@ -173,6 +173,7 @@ async function fetchCrtmArrivals(codStop) {
         codMode:         t.line?.codMode || '8',
         codLine:         t.line?.codLine || '',
         direction:       t.direction || 1,
+        codItinerary:    t.destinationStop?.codStop || '',
       };
     })
     .filter(t => t.minutes >= 0)
