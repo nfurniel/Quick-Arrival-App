@@ -24,6 +24,7 @@ export default async function handler(request) {
       },
     });
 
+    // Validacion
     if (!response.ok) {
       console.error('[api/lines] Error Supabase:', response.status);
       return new Response(JSON.stringify({ error: 'Error consultando la base de datos' }), {

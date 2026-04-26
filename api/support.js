@@ -11,9 +11,14 @@ async function getUser(token) {
 }
 
 async function enviarEmailRespuesta(toEmail, respuesta) {
-  if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) return;
+  if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+    console.error('[support] GMAIL_USER o GMAIL_APP_PASSWORD no configuradas en Vercel');
+    return;
+  }
   const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false,
     auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD },
   });
   await transporter.sendMail({

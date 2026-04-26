@@ -1,10 +1,10 @@
-// mapIcons.js — Definicion de todos los iconos del mapa
+// mapIcons.js — Son todos los iconos del mapa
 import L from 'leaflet';
 import busIconImg from '../../assets/icono-parada-bus.png';
 import busInterurbanoImg from '../../assets/icono-parada-bus-interurbano.png';
 import busLocalImg from '../../assets/icono-parada-bus-local.png';
 
-// Fix para los iconos por defecto de Leaflet con Vite
+// Esto es un pequeno fix para los iconos por defecto de Leaflet con Vite
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
@@ -89,7 +89,7 @@ export const highlightedStopIcon = new L.Icon({
   className: 'highlighted-stop-marker'
 });
 
-// Icono para parada favorita seleccionada: solo el anillo de resalto, sin imagen
+// Icono para parada favorita seleccionada: solo el anillo de resalto, sin la imagen
 export const favSelectedIcon = new L.DivIcon({
   html: '<div class="fav-selected-ring"></div>',
   iconSize: [24, 24],
@@ -98,7 +98,7 @@ export const favSelectedIcon = new L.DivIcon({
   className: '',
 });
 
-// Determinar el tipo de parada segun cod_mode y lineas
+// Esto lo que va a hacer es determinar el tipo de parada segun cod_mode y lineas
 export function getStopType(codMode, lines) {
   if (codMode === 6) return 'urbano';
   if (lines) {

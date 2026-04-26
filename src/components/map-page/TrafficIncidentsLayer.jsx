@@ -8,12 +8,12 @@ import {
 } from 'react-icons/tb';
 
 const TIPOS_INCIDENCIA = {
-  1:  { Icon: TbAlertOctagon,  label: 'Accidente',        color: '#dc2626' },
-  6:  { Icon: TbCar,           label: 'Retención',         color: '#f97316' },
-  7:  { Icon: TbAlertTriangle, label: 'Carril cortado',    color: '#f59e0b' },
-  8:  { Icon: TbCircleOff,     label: 'Vía cortada',       color: '#dc2626' },
-  9:  { Icon: TbCone,          label: 'Obras',             color: '#f59e0b' },
-  13: { Icon: TbTool,          label: 'Vehículo averiado', color: '#6b7280' },
+  1: { Icon: TbAlertOctagon, label: 'Accidente', color: '#dc2626' },
+  6: { Icon: TbCar, label: 'Retención', color: '#f97316' },
+  7: { Icon: TbAlertTriangle, label: 'Carril cortado', color: '#f59e0b' },
+  8: { Icon: TbCircleOff, label: 'Vía cortada', color: '#dc2626' },
+  9: { Icon: TbCone, label: 'Obras', color: '#f59e0b' },
+  13: { Icon: TbTool, label: 'Vehículo averiado', color: '#6b7280' },
 };
 const TIPO_DESCONOCIDO = { Icon: TbAlertCircle, label: 'Incidencia', color: '#6b7280' };
 
@@ -59,8 +59,8 @@ export default function TrafficIncidentsLayer({ visible }) {
   const [incidencias, setIncidencias] = useState([]);
   const timerRef = useRef(null);
 
-  // Pedir incidencias con un pequeño retraso para no lanzar una petición
-  // por cada píxel que el usuario mueva el mapa
+  // Pedir incidencias con un pequeño retraso para no lanzar una peticion
+  // por cada píxel que el usuario mueva el mapa, porque si no se peta si estas en el movil
   useMapEvents({
     moveend: () => { if (visible) programarPeticion(); },
     zoomend: () => { if (visible) programarPeticion(); },
@@ -71,7 +71,7 @@ export default function TrafficIncidentsLayer({ visible }) {
     timerRef.current = setTimeout(pedirIncidencias, 600);
   }
 
-  // Llama al backend (/api/traffic) con las coordenadas del área visible del mapa
+  // Llamada al backend (/api/traffic) con las coordenadas del área visible del mapa
   async function pedirIncidencias() {
     const limites = map.getBounds();
     const params = new URLSearchParams({

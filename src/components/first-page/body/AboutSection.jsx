@@ -19,7 +19,7 @@ export default function AboutSection() {
                     </div>
                 </div>
                 <div className="about-hero-image-wrapper">
-                    <img src={appPreview} alt="Maqueta de Quick Arrival mostrando el mapa en tiempo real" className="about-hero-image" draggable="false"/>
+                    <img src={appPreview} alt="Maqueta de Quick Arrival mostrando el mapa en tiempo real" className="about-hero-image" draggable="false" />
                 </div>
             </div>
         </section>
