@@ -97,6 +97,7 @@ export async function getBusLocation(mode, codLine, direction, codStop, maxRetri
 
       const vehicles = Array.isArray(vehiclesData) ? vehiclesData : [vehiclesData];
       return vehicles
+        .filter(v => !v.direction || String(v.direction) === String(direction))
         .map(v => ({
           latitude:  v.coordinates?.latitude,
           longitude: v.coordinates?.longitude,
