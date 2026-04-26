@@ -82,7 +82,7 @@ export async function getBusLocation(mode, codLine, direction, codStop, maxRetri
       await new Promise(r => setTimeout(r, 800 * Math.pow(2, attempt - 1)));
     }
     try {
-      const url = `${CRTM_WIDGETS_BASE}/GetLineLocation.php?mode=${mode}&codLine=${codLine}&codStop=${codStop}&direction=${direction}&codItinerary=${codItinerary}&_=${Date.now()}`;
+      const url = `${CRTM_WIDGETS_BASE}/GetLineLocation.php?mode=${mode}&codLine=${codLine}&codStop=${codStop}&direction=${direction}&codItinerary=&_=${Date.now()}`;
       const response = await fetch(url, { cache: 'no-store' });
 
       if (!response.ok) {
