@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './Sidebar.css';
 import lightThemeIcon from '../../assets/light-theme-icon.png';
 import darkThemeIcon from '../../assets/dark-theme-icon.png';
@@ -73,7 +74,10 @@ export default function Sidebar({
   favourites,
   onSelectFavourite,
   onRemoveFavourite,
+  onOpenSupport,
+  isAdmin,
 }) {
+  const navigate = useNavigate();
   const handleClose = () => {
     onClose();
     if (showAvatarPicker) onToggleAvatarPicker();
@@ -180,6 +184,18 @@ export default function Sidebar({
           </div>
 
           <div className="sidebar-divider"></div>
+
+          <button className="sidebar-menu-item" onClick={onOpenSupport}>
+            <span className="sidebar-menu-icon-text">?</span>
+            <span>Soporte</span>
+          </button>
+
+          {isAdmin && (
+            <button className="sidebar-menu-item" onClick={() => navigate('/admin')}>
+              <span className="sidebar-menu-icon-text">⚙</span>
+              <span>Panel admin</span>
+            </button>
+          )}
 
           <button className="sidebar-menu-item sidebar-logout" onClick={onLogout}>
             <span className="sidebar-menu-icon-text">⏻</span>

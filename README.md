@@ -16,6 +16,7 @@ Proyecto desarrollado como Trabajo de Fin de Ciclo (TFC) de 2o de DAW.
 | Base de datos | Supabase (PostgreSQL) |
 | Autenticacion | Supabase Auth |
 | Presencia en tiempo real | Supabase Realtime (Presence) |
+| Email transaccional | Gmail SMTP via Nodemailer |
 | APIs de transporte | EMT Madrid (buses urbanos) + CRTM (buses interurbanos) |
 | Trafico en tiempo real | TomTom Traffic API (incidencias + flow tiles) |
 | Enrutado GPS | OSRM (routing publico sin API key) |
@@ -40,6 +41,7 @@ Proyecto desarrollado como Trabajo de Fin de Ciclo (TFC) de 2o de DAW.
 │  /api/stops        /api/lines       /api/arrivals            │
 │  /api/reports      /api/report-votes                         │
 │  /api/traffic        ← incidencias TomTom con cache global   │
+│  /api/support        ← tickets de soporte + email admin      │
 └────────┬─────────────────────────┬────────────────┬──────────┘
          │                         │                │
 ┌────────▼──────────┐   ┌──────────▼──────┐  ┌─────▼────────┐
@@ -206,11 +208,12 @@ Quick-Arrival-App/
 │   ├── traffic.js                # GET /api/traffic — incidencias TomTom con cache y bbox snap
 │   ├── reports.js                # GET + POST /api/reports — reportes colaborativos por bus
 │   ├── report-votes.js           # POST /api/report-votes — votos en reportes
+│   ├── support.js                # GET + POST + PATCH + DELETE /api/support — tickets de soporte
 │   ├── emt-proxy.js              # Proxy EMT (legacy, aun usado para GPS de buses)
 │   └── crtm-proxy.js             # Proxy CRTM con spoofing de Origin/Referer
 │
 ├── src/
-│   ├── App.jsx                   # Rutas (/ y /mapa) + control de sesion Supabase
+│   ├── App.jsx                   # Rutas (/, /mapa, /admin) + control de sesion Supabase
 │   ├── main.jsx                  # Punto de entrada React
 │   ├── supabaseClient.js         # Cliente Supabase + logica "Recordarme"
 │   │
@@ -238,9 +241,14 @@ Quick-Arrival-App/
 │           ├── ReportModal.css
 │           ├── ReportsPanel.jsx          # Panel de reportes agrupados por categoria con votos
 │           ├── ReportsPanel.css
-│           ├── Sidebar.jsx               # Menu lateral
+│           ├── SupportModal.jsx          # Modal de soporte (tipos: bug, datos, sugerencia...)
+│           ├── SupportModal.css
+│           ├── Sidebar.jsx               # Menu lateral (incluye acceso a soporte y panel admin)
 │           ├── LocateControl.jsx         # Boton centrar en usuario
 │           └── mapIcons.js               # Iconos Leaflet
+│       └── admin/
+│           ├── AdminPanel.jsx            # Panel admin: lista tickets, responde por email, elimina
+│           └── AdminPanel.css
 │
 ├── scripts/
 │   ├── setup-stops.sql           # SQL para crear la tabla en Supabase
@@ -263,6 +271,10 @@ Quick-Arrival-App/
 | `GET /api/reports` | Reportes activos de las ultimas 2h. Params: `lineName`, `busId` (opcional) |
 | `POST /api/reports` | Crear reporte. Body: `type`, `metadata`, `description`, `lat`, `lng`, `lineName`, `busId` |
 | `POST /api/report-votes` | Votar un reporte. Body: `reportId`, `voteType` |
+| `POST /api/support` | Crear ticket de soporte. Body: `type`, `description`. Auth requerida |
+| `GET /api/support` | Listar todos los tickets. Solo admin (`app_metadata.role = 'admin'`) |
+| `PATCH /api/support` | Responder ticket y enviar email al usuario. Body: `ticketId`, `response`. Solo admin |
+| `DELETE /api/support` | Eliminar ticket. Body: `ticketId`. Solo admin |
 
 ---
 
@@ -291,6 +303,11 @@ EMT_PASSKEY=tu_passkey
 # VITE_TOMTOM_API_KEY: frontend (flow tiles directos a TomTom)
 TOMTOM_API_KEY=tu_key
 VITE_TOMTOM_API_KEY=tu_key
+
+# Gmail SMTP — para enviar emails de respuesta a tickets de soporte
+# Usa una contrasena de aplicacion de Google (no la contrasena normal de Gmail)
+GMAIL_USER=tu_email@gmail.com
+GMAIL_APP_PASSWORD=xxxx_xxxx_xxxx_xxxx
 ```
 
 ### Produccion (variables de Vercel)
@@ -300,6 +317,8 @@ SUPABASE_SERVICE_KEY
 EMT_EMAIL / EMT_PASSWORD / EMT_CLIENT_ID / EMT_PASSKEY
 TOMTOM_API_KEY
 VITE_TOMTOM_API_KEY
+GMAIL_USER
+GMAIL_APP_PASSWORD
 ```
 
 ---
@@ -348,6 +367,21 @@ VITE_TOMTOM_API_KEY
 | `user_id` | uuid | FK a auth.users |
 | `vote_type` | text | `up` o `down` |
 
+### Tabla `support_tickets` — tickets de soporte al admin
+
+| Columna | Tipo | Descripcion |
+|---------|------|-------------|
+| `id` | uuid PK | Generado automaticamente |
+| `user_id` | uuid | FK a auth.users |
+| `type` | text | `bug`, `datos`, `sugerencia`, `cuenta`, `otro` |
+| `description` | text | Descripcion del problema (max 500 chars) |
+| `status` | text | `pending`, `reviewed`, `dismissed` |
+| `admin_response` | text | Respuesta del administrador |
+| `responded_at` | timestamptz | Timestamp de la respuesta |
+| `created_at` | timestamptz | Timestamp de creacion |
+
+El rol de administrador se asigna via `app_metadata.role = 'admin'` en Supabase Auth (solo modificable desde el backend con service key).
+
 ---
 
 ## Instalacion y desarrollo
@@ -375,6 +409,7 @@ npm run build   # build de produccion
 | TomTom Traffic | Flow tiles (colores carreteras) | Frontend directo (tiles) |
 | OSRM | Ruta GPS del bus a la parada | Frontend directo (publica) |
 | CartoDB | Tiles del mapa base | Frontend directo (publica) |
+| Gmail SMTP | Emails de respuesta a tickets de soporte | Backend (Nodemailer + app password) |
 
 ---
 

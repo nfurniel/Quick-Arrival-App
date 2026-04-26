@@ -1,0 +1,127 @@
+.support-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.support-modal {
+  background: #fff;
+  border-radius: 16px;
+  padding: 2rem;
+  width: 90%;
+  max-width: 440px;
+  position: relative;
+
+  .dark & {
+    background: #1e1e2e;
+    color: #e2e8f0;
+  }
+}
+
+.support-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: #64748b;
+
+  &:hover { color: #334155; }
+}
+
+.support-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 1.25rem;
+}
+
+.support-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.support-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+
+  .dark & { color: #cbd5e1; }
+}
+
+.support-optional {
+  font-weight: 400;
+  color: #9ca3af;
+  font-size: 0.8rem;
+}
+
+.support-select,
+.support-textarea {
+  width: 100%;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.9rem;
+  background: #f8fafc;
+  color: #1e293b;
+  outline: none;
+  box-sizing: border-box;
+
+  &:focus { border-color: #6366f1; }
+
+  .dark & {
+    background: #2d2d3e;
+    border-color: #3f3f5a;
+    color: #e2e8f0;
+  }
+}
+
+.support-textarea {
+  resize: vertical;
+  min-height: 90px;
+}
+
+.support-counter {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  text-align: right;
+  margin-top: -0.25rem;
+}
+
+.support-error {
+  color: #dc2626;
+  font-size: 0.85rem;
+}
+
+.support-btn {
+  margin-top: 0.5rem;
+  background: #6366f1;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.75rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+
+  &:hover:not(:disabled) { background: #4f46e5; }
+  &:disabled { opacity: 0.6; cursor: not-allowed; }
+}
+
+.support-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  text-align: center;
+  padding: 1rem 0;
+
+  p { color: #374151; }
+}

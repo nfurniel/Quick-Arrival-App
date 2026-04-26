@@ -16,6 +16,7 @@
     "leaflet": "^1.9.4",
     "mathjs": "^15.1.1",
     "motion": "^12.34.3",
+    "nodemailer": "^8.0.6",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-icons": "^5.5.0",

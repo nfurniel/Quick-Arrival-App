@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
+import nodemailer from 'nodemailer'
 
 const SUPABASE_URL = 'https://tumoqeuueqbvfstdhdmn.supabase.co';
 
@@ -402,6 +403,152 @@ function localApiPlugin(env) {
             console.error('[local-api/traffic]', e.message);
             if (cached) return send(res, 200, { incidents: cached.data, cached: true, stale: true });
             return send(res, 502, { error: e.message, incidents: [] });
+          }
+        }
+
+        // GET + POST + PATCH /api/support
+        if (pathname === '/api/support') {
+          if (req.method === 'OPTIONS') {
+            res.writeHead(204, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS' });
+            return res.end();
+          }
+
+          const authHeader = req.headers['authorization'] || '';
+          const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+          if (!token) return send(res, 401, { error: 'No autenticado' });
+
+          const authRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+            headers: { Authorization: `Bearer ${token}`, apikey: serviceKey },
+          });
+          if (!authRes.ok) return send(res, 401, { error: 'Token inválido' });
+          const user = await authRes.json();
+
+          if (req.method === 'POST') {
+            const body = await new Promise((resolve) => {
+              let data = '';
+              req.on('data', chunk => { data += chunk; });
+              req.on('end', () => { try { resolve(JSON.parse(data)); } catch { resolve({}); } });
+            });
+
+            const { type, description } = body;
+            if (!type) return send(res, 400, { error: 'Falta el tipo' });
+            if (description && description.length > 500) return send(res, 400, { error: 'Descripción demasiado larga' });
+
+            try {
+              const r = await fetch(`${SUPABASE_URL}/rest/v1/support_tickets`, {
+                method: 'POST',
+                headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+                body: JSON.stringify({ user_id: user.id, type, description: description || null, status: 'pending' }),
+              });
+              if (!r.ok) throw new Error(`Supabase ${r.status}`);
+              console.log(`[local-api/support] Ticket creado por ${user.email}`);
+              return send(res, 201, { ok: true });
+            } catch (e) {
+              console.error('[local-api/support]', e.message);
+              return send(res, 500, { error: 'Error al guardar el ticket' });
+            }
+          }
+
+          if (req.method === 'GET') {
+            if (user.app_metadata?.role !== 'admin') return send(res, 403, { error: 'No autorizado' });
+
+            try {
+              const r = await fetch(`${SUPABASE_URL}/rest/v1/support_tickets?select=*&order=created_at.desc`, {
+                headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
+              });
+              const tickets = await r.json();
+              return send(res, 200, { tickets: Array.isArray(tickets) ? tickets : [] });
+            } catch (e) {
+              console.error('[local-api/support]', e.message);
+              return send(res, 502, { error: 'Error cargando tickets' });
+            }
+          }
+
+          if (req.method === 'PATCH') {
+            if (user.app_metadata?.role !== 'admin') return send(res, 403, { error: 'No autorizado' });
+
+            const body = await new Promise((resolve) => {
+              let data = '';
+              req.on('data', chunk => { data += chunk; });
+              req.on('end', () => { try { resolve(JSON.parse(data)); } catch { resolve({}); } });
+            });
+
+            const { ticketId, response } = body;
+            if (!ticketId || !response?.trim()) return send(res, 400, { error: 'Faltan datos: ticketId y response' });
+
+            try {
+              const updateRes = await fetch(`${SUPABASE_URL}/rest/v1/support_tickets?id=eq.${ticketId}`, {
+                method: 'PATCH',
+                headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, 'Content-Type': 'application/json', Prefer: 'return=representation' },
+                body: JSON.stringify({ admin_response: response.trim(), responded_at: new Date().toISOString(), status: 'reviewed' }),
+              });
+              if (!updateRes.ok) throw new Error(`Supabase ${updateRes.status}`);
+              const [ticket] = await updateRes.json();
+
+              // Email vía Gmail SMTP
+              const gmailUser = env.GMAIL_USER;
+              const gmailPass = env.GMAIL_APP_PASSWORD;
+              console.log(`[local-api/support] GMAIL_USER=${gmailUser || 'NO CONFIGURADO'}`);
+              if (gmailUser && gmailPass) {
+                try {
+                  const userRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${ticket.user_id}`, {
+                    headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
+                  });
+                  if (!userRes.ok) throw new Error(`No se pudo obtener el usuario: ${userRes.status}`);
+                  const ticketUser = await userRes.json();
+                  console.log(`[local-api/support] Enviando email a ${ticketUser.email}...`);
+                  const transporter = nodemailer.createTransport({
+                    host: 'smtp.gmail.com',
+                    port: 587,
+                    secure: false,
+                    auth: { user: gmailUser, pass: gmailPass },
+                    tls: { rejectUnauthorized: false },
+                  });
+                  await transporter.sendMail({
+                    from: `"Quick Arrival Soporte" <${gmailUser}>`,
+                    to: ticketUser.email,
+                    subject: 'Respuesta a tu solicitud de soporte — Quick Arrival',
+                    text: `Hola,\n\nHemos revisado tu solicitud y te enviamos la siguiente respuesta:\n\n${response.trim()}\n\nGracias por usar Quick Arrival.`,
+                  });
+                  console.log(`[local-api/support] Email enviado correctamente a ${ticketUser.email}`);
+                } catch (emailErr) {
+                  console.error('[local-api/support] Error enviando email:', emailErr.message);
+                }
+              } else {
+                console.log('[local-api/support] GMAIL_USER/GMAIL_APP_PASSWORD no configuradas en .env');
+              }
+
+              return send(res, 200, { ok: true });
+            } catch (e) {
+              console.error('[local-api/support PATCH]', e.message);
+              return send(res, 500, { error: 'Error actualizando el ticket' });
+            }
+          }
+
+          if (req.method === 'DELETE') {
+            if (user.app_metadata?.role !== 'admin') return send(res, 403, { error: 'No autorizado' });
+
+            const body = await new Promise((resolve) => {
+              let data = '';
+              req.on('data', chunk => { data += chunk; });
+              req.on('end', () => { try { resolve(JSON.parse(data)); } catch { resolve({}); } });
+            });
+
+            const { ticketId } = body;
+            if (!ticketId) return send(res, 400, { error: 'Falta ticketId' });
+
+            try {
+              const r = await fetch(`${SUPABASE_URL}/rest/v1/support_tickets?id=eq.${ticketId}`, {
+                method: 'DELETE',
+                headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
+              });
+              if (!r.ok) throw new Error(`Supabase ${r.status}`);
+              console.log(`[local-api/support] Ticket ${ticketId} eliminado`);
+              return send(res, 200, { ok: true });
+            } catch (e) {
+              console.error('[local-api/support DELETE]', e.message);
+              return send(res, 500, { error: 'Error eliminando el ticket' });
+            }
           }
         }
 
