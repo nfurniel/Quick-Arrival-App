@@ -69,7 +69,7 @@ export default async function handler(req, res) {
       { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } }
     );
     const votes = await countsRes.json();
-    const up   = votes.filter(v => v.vote_type === 'up').length;
+    const up = votes.filter(v => v.vote_type === 'up').length;
     const down = votes.filter(v => v.vote_type === 'down').length;
 
     return res.status(200).json({ up, down, userVote: voteType });

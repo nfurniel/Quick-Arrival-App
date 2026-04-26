@@ -4,12 +4,24 @@ const supabaseUrl = "https://tumoqeuueqbvfstdhdmn.supabase.co";
 const supabaseAnonKey =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR1bW9xZXV1ZXFidmZzdGRoZG1uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAzOTcwMTIsImV4cCI6MjA4NTk3MzAxMn0.3WtuEz7LwxyYq9V4EIZm7DXFuQlb_4z-J5y5QYyD6zA";
 
-// Storage personalizado que alterna entre localStorage y sessionStorage
-// según la preferencia de "Recordarme" del usuario
+// Capturamos si hay token de recovery ANTES de que Supabase borre el hash.
+// Este módulo se ejecuta sincrónicamente al importarse, así que el hash aún está presente.
+export const isPasswordRecovery = window.location.hash.includes('type=recovery');
+
+if (isPasswordRecovery) {
+  // Borramos la sesión guardada directamente del storage para que Supabase
+  // no haga auto-login y procese el token de recovery en su lugar.
+  Object.keys(localStorage).forEach(k => { if (k.startsWith('sb-')) localStorage.removeItem(k); });
+  Object.keys(sessionStorage).forEach(k => { if (k.startsWith('sb-')) sessionStorage.removeItem(k); });
+}
+
 const STORAGE_KEY_PREFIX = "sb-tumoqeuueqbvfstdhdmn-auth-token";
 
 const customStorage = {
   getItem: (key) => {
+    // Si es un flujo de recovery, ignoramos la sesión guardada para que Supabase
+    // use el token del hash en lugar de hacer auto-login con la sesión anterior.
+    if (isPasswordRecovery) return null;
     return localStorage.getItem(key) || sessionStorage.getItem(key);
   },
   setItem: (key, value) => {
