@@ -405,6 +405,65 @@ function localApiPlugin(env) {
           }
         }
 
+        // GET + POST /api/support
+        if (pathname === '/api/support') {
+          if (req.method === 'OPTIONS') {
+            res.writeHead(204, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS' });
+            return res.end();
+          }
+
+          const authHeader = req.headers['authorization'] || '';
+          const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+          if (!token) return send(res, 401, { error: 'No autenticado' });
+
+          const authRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+            headers: { Authorization: `Bearer ${token}`, apikey: serviceKey },
+          });
+          if (!authRes.ok) return send(res, 401, { error: 'Token inválido' });
+          const user = await authRes.json();
+
+          if (req.method === 'POST') {
+            const body = await new Promise((resolve) => {
+              let data = '';
+              req.on('data', chunk => { data += chunk; });
+              req.on('end', () => { try { resolve(JSON.parse(data)); } catch { resolve({}); } });
+            });
+
+            const { type, description } = body;
+            if (!type) return send(res, 400, { error: 'Falta el tipo' });
+            if (description && description.length > 500) return send(res, 400, { error: 'Descripción demasiado larga' });
+
+            try {
+              const r = await fetch(`${SUPABASE_URL}/rest/v1/support_tickets`, {
+                method: 'POST',
+                headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+                body: JSON.stringify({ user_id: user.id, type, description: description || null, status: 'pending' }),
+              });
+              if (!r.ok) throw new Error(`Supabase ${r.status}`);
+              console.log(`[local-api/support] Ticket creado por ${user.email}`);
+              return send(res, 201, { ok: true });
+            } catch (e) {
+              console.error('[local-api/support]', e.message);
+              return send(res, 500, { error: 'Error al guardar el ticket' });
+            }
+          }
+
+          if (req.method === 'GET') {
+            if (user.app_metadata?.role !== 'admin') return send(res, 403, { error: 'No autorizado' });
+
+            try {
+              const r = await fetch(`${SUPABASE_URL}/rest/v1/support_tickets?select=*&order=created_at.desc`, {
+                headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
+              });
+              const tickets = await r.json();
+              return send(res, 200, { tickets: Array.isArray(tickets) ? tickets : [] });
+            } catch (e) {
+              console.error('[local-api/support]', e.message);
+              return send(res, 502, { error: 'Error cargando tickets' });
+            }
+          }
+        }
+
         next();
       });
     },
