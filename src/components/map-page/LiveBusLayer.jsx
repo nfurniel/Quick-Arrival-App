@@ -62,7 +62,8 @@ export default function LiveBusLayer({ selectedBus, onStatusChange }) {
           selectedBus.direction,
           selectedBus.codStop,
           1,
-          selectedBus.busId
+          selectedBus.busId,
+          selectedBus.codItinerary
         );
 
         if (ubicaciones && ubicaciones.length > 0 && montado) {
