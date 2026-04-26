@@ -100,7 +100,9 @@ export default function Sidebar({
           tabIndex={0}
           aria-label="Cerrar menú"
           onClick={handleClose}
-          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleClose(); }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') handleClose();
+          }}
         />
       )}
 

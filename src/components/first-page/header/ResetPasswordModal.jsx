@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "../../../supabaseClient.js";
 import "./AuthModal.css"; // Reusing the same styles for consistency
 
-export default function ResetPasswordModal({ isOpen, onClose }) {
+export default function ResetPasswordModal({ isOpen, onClose, onSuccess }) {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -31,6 +31,7 @@ export default function ResetPasswordModal({ isOpen, onClose }) {
         setError(updateError.message);
       } else {
         setSuccess(true);
+        sessionStorage.removeItem('pendingPasswordReset');
       }
     } catch (err) {
       setError("Ha ocurrido un error inesperado al actualizar la contraseña.");
@@ -39,7 +40,10 @@ export default function ResetPasswordModal({ isOpen, onClose }) {
     }
   };
 
-  const handleClose = () => {
+  const handleClose = async (completed = false) => {
+    if (!completed) {
+      await supabase.auth.signOut();
+    }
     setPassword("");
     setConfirmPassword("");
     setError("");
@@ -48,9 +52,9 @@ export default function ResetPasswordModal({ isOpen, onClose }) {
   };
 
   return (
-    <div className="auth-overlay" onClick={handleClose}>
+    <div className="auth-overlay">
       <div className="auth-modal" onClick={(e) => e.stopPropagation()}>
-        <button className="auth-close" onClick={handleClose} aria-label="Cerrar">
+        <button className="auth-close" onClick={() => handleClose(false)} aria-label="Cerrar">
           &times;
         </button>
 
@@ -61,7 +65,7 @@ export default function ResetPasswordModal({ isOpen, onClose }) {
             <p>
               Tu contraseña se ha cambiado correctamente. Ahora puedes iniciar sesión con tu nueva contraseña.
             </p>
-            <button className="auth-btn" onClick={handleClose}>
+            <button className="auth-btn" onClick={onSuccess}>
               Cerrar y continuar
             </button>
           </div>

@@ -7,14 +7,15 @@ import {
 } from 'react-icons/tb';
 import './ReportsPanel.css';
 
+// Estos iconos son los que cojo de la libreria de ICONS de react 
 const TYPE_META = {
-  seats:         { Icon: TbArmchair,      label: 'Asientos' },
-  punctuality:   { Icon: TbClock,         label: 'Puntualidad' },
-  crowding:      { Icon: TbUsers,         label: 'Ocupación' },
-  noise:         { Icon: TbVolume,        label: 'Ruido' },
-  temperature:   { Icon: TbTemperature,   label: 'Temperatura' },
-  driver:        { Icon: TbSteeringWheel, label: 'Conducción' },
-  accessibility: { Icon: TbWheelchair,    label: 'Accesibilidad' },
+  seats: { Icon: TbArmchair, label: 'Asientos' },
+  punctuality: { Icon: TbClock, label: 'Puntualidad' },
+  crowding: { Icon: TbUsers, label: 'Ocupación' },
+  noise: { Icon: TbVolume, label: 'Ruido' },
+  temperature: { Icon: TbTemperature, label: 'Temperatura' },
+  driver: { Icon: TbSteeringWheel, label: 'Conducción' },
+  accessibility: { Icon: TbWheelchair, label: 'Accesibilidad' },
 };
 
 const OPTION_LABELS = {
@@ -51,12 +52,12 @@ function groupByType(reports) {
 }
 
 export default function ReportsPanel({ lineName, busId, isDarkMode, onBus }) {
-  const [reports, setReports]     = useState([]);
-  const [loading, setLoading]     = useState(true);
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [userVotes, setUserVotes] = useState({});
-  const [voting, setVoting]       = useState(null);
+  const [voting, setVoting] = useState(null);
   const [voteError, setVoteError] = useState(null);
-  const [expanded, setExpanded]   = useState(null);
+  const [expanded, setExpanded] = useState(null);
   const [collapsed, setCollapsed] = useState(() => window.innerWidth < 768);
 
   const fetchReports = useCallback(async () => {
@@ -107,7 +108,7 @@ export default function ReportsPanel({ lineName, busId, isDarkMode, onBus }) {
   };
 
   const groups = !loading && reports.length > 0 ? groupByType(reports) : [];
-  const count  = groups.length;
+  const count = groups.length;
 
   return (
     <div className={`reports-panel ${isDarkMode ? 'dark' : ''}`}>
@@ -132,85 +133,85 @@ export default function ReportsPanel({ lineName, busId, isDarkMode, onBus }) {
           )}
           {voteError && <p className="reports-vote-error">{voteError}</p>}
           {!loading && count > 0 && (
-      <div className="reports-list">
-        {groups.map(({ type, reps, topOption }) => {
-          const meta = TYPE_META[type] || { Icon: TbVolume, label: type };
-          const { Icon } = meta;
-          const isOpen = expanded === type;
-          const totalVotesUp = reps.reduce((s, r) => s + (r.votes?.up || 0), 0);
+            <div className="reports-list">
+              {groups.map(({ type, reps, topOption }) => {
+                const meta = TYPE_META[type] || { Icon: TbVolume, label: type };
+                const { Icon } = meta;
+                const isOpen = expanded === type;
+                const totalVotesUp = reps.reduce((s, r) => s + (r.votes?.up || 0), 0);
 
-          return (
-            <div key={type} className="report-group">
-              {/* Fila resumen — clickable */}
-              <button
-                className="report-group-header"
-                onClick={() => setExpanded(isOpen ? null : type)}
-              >
-                <Icon size={18} className="report-group-icon" />
-                <div className="report-group-summary">
-                  <span className="report-group-label">{meta.label}</span>
-                  <span className="report-group-top">
-                    {OPTION_LABELS[topOption] || topOption || '—'}
-                    {reps.length > 1 && (
-                      <span className="report-group-count">{reps.length} reportes</span>
-                    )}
-                  </span>
-                </div>
-                <div className="report-group-right">
-                  {totalVotesUp > 0 && (
-                    <span className="report-group-upvotes">
-                      <TbThumbUp size={12} /> {totalVotesUp}
-                    </span>
-                  )}
-                  {isOpen ? <TbChevronUp size={16} /> : <TbChevronDown size={16} />}
-                </div>
-              </button>
-
-              {/* Reportes individuales expandidos */}
-              {isOpen && (
-                <div className="report-group-detail">
-                  {reps.map(rep => {
-                    const myVote  = userVotes[rep.id];
-                    const isVoting = voting === rep.id;
-                    return (
-                      <div key={rep.id} className="report-detail-card">
-                        <div className="report-detail-top">
-                          <span className="report-detail-time">{timeAgo(rep.created_at)}</span>
-                        </div>
-                        {rep.description
-                          ? <p className="report-detail-desc">{rep.description}</p>
-                          : <p className="report-detail-desc muted">Sin comentario</p>
-                        }
-                        <div className="report-detail-votes">
-                          <button
-                            className={`vote-btn up ${myVote === 'up' ? 'active' : ''} ${!onBus ? 'locked' : ''}`}
-                            onClick={() => handleVote(rep.id, 'up')}
-                            disabled={isVoting || !onBus}
-                            title={onBus ? 'Confirmo' : 'Activa "Voy en este bus" para votar'}
-                          >
-                            <TbThumbUp size={12} /> {rep.votes.up}
-                          </button>
-                          <button
-                            className={`vote-btn down ${myVote === 'down' ? 'active' : ''} ${!onBus ? 'locked' : ''}`}
-                            onClick={() => handleVote(rep.id, 'down')}
-                            disabled={isVoting || !onBus}
-                            title={onBus ? 'No aplica' : 'Activa "Voy en este bus" para votar'}
-                          >
-                            <TbThumbDown size={12} /> {rep.votes.down}
-                          </button>
-                        </div>
-                        {!onBus && (
-                          <p className="vote-locked-hint">Activa "Voy en este bus" para votar</p>
-                        )}
+                return (
+                  <div key={type} className="report-group">
+                    {/* Fila resumen — clickable */}
+                    <button
+                      className="report-group-header"
+                      onClick={() => setExpanded(isOpen ? null : type)}
+                    >
+                      <Icon size={18} className="report-group-icon" />
+                      <div className="report-group-summary">
+                        <span className="report-group-label">{meta.label}</span>
+                        <span className="report-group-top">
+                          {OPTION_LABELS[topOption] || topOption || '—'}
+                          {reps.length > 1 && (
+                            <span className="report-group-count">{reps.length} reportes</span>
+                          )}
+                        </span>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
+                      <div className="report-group-right">
+                        {totalVotesUp > 0 && (
+                          <span className="report-group-upvotes">
+                            <TbThumbUp size={12} /> {totalVotesUp}
+                          </span>
+                        )}
+                        {isOpen ? <TbChevronUp size={16} /> : <TbChevronDown size={16} />}
+                      </div>
+                    </button>
+
+                    {/* Reportes individuales expandidos */}
+                    {isOpen && (
+                      <div className="report-group-detail">
+                        {reps.map(rep => {
+                          const myVote = userVotes[rep.id];
+                          const isVoting = voting === rep.id;
+                          return (
+                            <div key={rep.id} className="report-detail-card">
+                              <div className="report-detail-top">
+                                <span className="report-detail-time">{timeAgo(rep.created_at)}</span>
+                              </div>
+                              {rep.description
+                                ? <p className="report-detail-desc">{rep.description}</p>
+                                : <p className="report-detail-desc muted">Sin comentario</p>
+                              }
+                              <div className="report-detail-votes">
+                                <button
+                                  className={`vote-btn up ${myVote === 'up' ? 'active' : ''} ${!onBus ? 'locked' : ''}`}
+                                  onClick={() => handleVote(rep.id, 'up')}
+                                  disabled={isVoting || !onBus}
+                                  title={onBus ? 'Confirmo' : 'Activa "Voy en este bus" para votar'}
+                                >
+                                  <TbThumbUp size={12} /> {rep.votes.up}
+                                </button>
+                                <button
+                                  className={`vote-btn down ${myVote === 'down' ? 'active' : ''} ${!onBus ? 'locked' : ''}`}
+                                  onClick={() => handleVote(rep.id, 'down')}
+                                  disabled={isVoting || !onBus}
+                                  title={onBus ? 'No aplica' : 'Activa "Voy en este bus" para votar'}
+                                >
+                                  <TbThumbDown size={12} /> {rep.votes.down}
+                                </button>
+                              </div>
+                              {!onBus && (
+                                <p className="vote-locked-hint">Activa "Voy en este bus" para votar</p>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-          );
-        })}
-          </div>
           )}
         </>
       )}

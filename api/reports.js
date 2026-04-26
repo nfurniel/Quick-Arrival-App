@@ -4,12 +4,12 @@ const VALID_TYPES = ['seats', 'punctuality', 'crowding', 'noise', 'temperature',
 
 // Para cada tipo de reporte, los valores que acepta
 const VALID_OPTIONS = {
-  seats:         ['many', 'some', 'few', 'none'],
-  punctuality:   ['early', 'on_time', 'slightly_late', 'very_late'],
-  crowding:      ['empty', 'normal', 'full', 'overcrowded'],
-  noise:         ['quiet', 'normal', 'noisy'],
-  temperature:   ['cold', 'ok', 'hot'],
-  driver:        ['great', 'normal', 'bad'],
+  seats: ['many', 'some', 'few', 'none'],
+  punctuality: ['early', 'on_time', 'slightly_late', 'very_late'],
+  crowding: ['empty', 'normal', 'full', 'overcrowded'],
+  noise: ['quiet', 'normal', 'noisy'],
+  temperature: ['cold', 'ok', 'hot'],
+  driver: ['great', 'normal', 'bad'],
   accessibility: ['ramp_ok', 'ramp_broken'],
 };
 
@@ -46,7 +46,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Parámetro lineName inválido' });
     }
 
-    // El busId es opcional, solo lo usamos si viene y no es demasiado largo
+    // El busId en verdad es opcional, solo lo usamos si viene y no es demasiado largo
     let busId = null;
     if (req.query.busId && String(req.query.busId).length <= 30) {
       busId = String(req.query.busId);
@@ -68,7 +68,7 @@ export default async function handler(req, res) {
       const reports = raw.map(({ report_votes, ...report }) => ({
         ...report,
         votes: {
-          up:   (report_votes || []).filter(v => v.vote_type === 'up').length,
+          up: (report_votes || []).filter(v => v.vote_type === 'up').length,
           down: (report_votes || []).filter(v => v.vote_type === 'down').length,
         },
       }));
@@ -154,14 +154,14 @@ export default async function handler(req, res) {
           Prefer: 'return=representation',
         },
         body: JSON.stringify({
-          user_id:     user.id,
+          user_id: user.id,
           type,
-          metadata:    metadataToSave,
+          metadata: metadataToSave,
           description: cleanDescription,
-          lat:         latN,
-          lng:         lngN,
-          line_name:   cleanLineName,
-          status:      'active',
+          lat: latN,
+          lng: lngN,
+          line_name: cleanLineName,
+          status: 'active',
         }),
       });
 
