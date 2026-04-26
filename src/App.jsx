@@ -3,6 +3,7 @@ import { Routes, Route, useNavigate } from 'react-router-dom';
 import FirstPage from "./components/first-page/FirstPage.jsx"
 import ResetPasswordModal from "./components/first-page/header/ResetPasswordModal.jsx"
 import MapPage from "./components/map-page/MapPage.jsx"
+import AdminPanel from "./components/admin/AdminPanel.jsx"
 import { supabase, isPasswordRecovery } from "./supabaseClient.js"
 import './app.css'
 
@@ -54,6 +55,7 @@ function App() {
       <Routes>
         <Route path="/" element={<FirstPage />} />
         <Route path="/mapa" element={<MapPage />} />
+        <Route path="/admin" element={<AdminPanel />} />
       </Routes>
       <ResetPasswordModal
         isOpen={showResetPassword}

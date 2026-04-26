@@ -18,6 +18,7 @@ import FavouritePopupLayer from './FavouritePopupLayer';
 import TrafficIncidentsLayer from './TrafficIncidentsLayer';
 import ReportModal from './ReportModal';
 import ReportsPanel from './ReportsPanel';
+import SupportModal from './SupportModal';
 import { TbBus, TbFlag, TbCircleCheck } from 'react-icons/tb';
 import semaforoIcon from '../../assets/icono-semaforo.png';
 
@@ -68,6 +69,8 @@ export default function MapPage() {
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [trackingStatus, setTrackingStatus] = useState('loading'); // 'loading' | 'found' | 'timeout'
   const [reportToast, setReportToast] = useState(false);
+  const [showSupport, setShowSupport] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [reportsPanelKey, setReportsPanelKey] = useState(0);
   const toastTimerRef = useRef(null);
   const navigate = useNavigate();
@@ -100,6 +103,7 @@ export default function MapPage() {
         } else {
           setSelectedAvatar(Math.floor(Math.random() * avatars.length));
         }
+        setIsAdmin(user.app_metadata?.role === 'admin');
       }
     }
     loadUser();
@@ -346,6 +350,8 @@ export default function MapPage() {
         favourites={favourites}
         onSelectFavourite={handleSelectFavourite}
         onRemoveFavourite={handleRemoveFavourite}
+        onOpenSupport={() => setShowSupport(true)}
+        isAdmin={isAdmin}
       />
 
       {/* Panel de seguimiento del bus */}
@@ -435,6 +441,8 @@ export default function MapPage() {
           }}
         />
       )}
+
+      <SupportModal isOpen={showSupport} onClose={() => setShowSupport(false)} />
 
       {/* Toast de confirmación de reporte */}
       {reportToast && (

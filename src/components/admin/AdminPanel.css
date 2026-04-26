@@ -1,0 +1,103 @@
+.admin-panel {
+  max-width: 900px;
+  margin: 2rem auto;
+  padding: 1.5rem;
+  font-family: system-ui, sans-serif;
+}
+
+.admin-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  color: #1e293b;
+}
+
+.admin-section {
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  padding: 1.25rem;
+}
+
+.admin-section-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: #334155;
+}
+
+.admin-count {
+  font-weight: 400;
+  color: #94a3b8;
+}
+
+.admin-empty {
+  color: #94a3b8;
+  font-size: 0.9rem;
+}
+
+.admin-error {
+  color: #dc2626;
+}
+
+.admin-table-wrapper {
+  overflow-x: auto;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+
+  th {
+    text-align: left;
+    padding: 0.6rem 0.75rem;
+    background: #f8fafc;
+    color: #64748b;
+    font-weight: 500;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  td {
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: top;
+    color: #334155;
+  }
+
+  tr:last-child td { border-bottom: none; }
+}
+
+.admin-date {
+  white-space: nowrap;
+  color: #94a3b8;
+}
+
+.admin-desc {
+  max-width: 300px;
+  word-break: break-word;
+}
+
+.admin-empty-cell {
+  color: #cbd5e1;
+}
+
+.admin-badge {
+  background: #ede9fe;
+  color: #5b21b6;
+  padding: 0.2rem 0.6rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.admin-status {
+  padding: 0.2rem 0.6rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  white-space: nowrap;
+
+  &.admin-status-pending   { background: #fef9c3; color: #854d0e; }
+  &.admin-status-reviewed  { background: #dcfce7; color: #166534; }
+  &.admin-status-dismissed { background: #f1f5f9; color: #64748b; }
+}
