@@ -1,23 +1,27 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
+import {
+  TbAlertOctagon, TbCar, TbAlertTriangle,
+  TbCircleOff, TbCone, TbTool, TbAlertCircle,
+} from 'react-icons/tb';
 
-// Tipos de incidencia de TomTom con su emoji, etiqueta y color
 const TIPOS_INCIDENCIA = {
-  1:  { emoji: '🚨', label: 'Accidente',        color: '#dc2626' },
-  6:  { emoji: '🚗', label: 'Retención',         color: '#f97316' },
-  7:  { emoji: '⚠️', label: 'Carril cortado',    color: '#f59e0b' },
-  8:  { emoji: '🚫', label: 'Vía cortada',       color: '#dc2626' },
-  9:  { emoji: '🚧', label: 'Obras',             color: '#f59e0b' },
-  13: { emoji: '🔧', label: 'Vehículo averiado', color: '#6b7280' },
+  1:  { Icon: TbAlertOctagon, label: 'Accidente',        color: '#dc2626' },
+  6:  { Icon: TbCar,          label: 'Retención',         color: '#f97316' },
+  7:  { Icon: TbAlertTriangle,label: 'Carril cortado',    color: '#f59e0b' },
+  8:  { Icon: TbCircleOff,    label: 'Vía cortada',       color: '#dc2626' },
+  9:  { Icon: TbCone,         label: 'Obras',             color: '#f59e0b' },
+  13: { Icon: TbTool,         label: 'Vehículo averiado', color: '#6b7280' },
 };
-const TIPO_DESCONOCIDO = { emoji: '⚠️', label: 'Incidencia', color: '#6b7280' };
+const TIPO_DESCONOCIDO = { Icon: TbAlertCircle, label: 'Incidencia', color: '#6b7280' };
 
-// Crea el icono circular con emoji para cada marcador
 function crearIcono(categoria) {
   const tipo = TIPOS_INCIDENCIA[categoria] ?? TIPO_DESCONOCIDO;
+  const svg = renderToStaticMarkup(createElement(tipo.Icon, { size: 18, color: 'white' }));
   return L.divIcon({
-    html: `<div class="traffic-incident-icon" style="background:${tipo.color}">${tipo.emoji}</div>`,
+    html: `<div class="traffic-incident-icon" style="background:${tipo.color}">${svg}</div>`,
     iconSize: [32, 32],
     iconAnchor: [16, 16],
     popupAnchor: [0, -20],
