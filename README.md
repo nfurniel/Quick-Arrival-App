@@ -1,6 +1,6 @@
 # Quick Arrival App
 
-Aplicacion web de transporte publico en tiempo real para la Comunidad de Madrid. Muestra paradas de autobuses urbanos (EMT) e interurbanos (CRTM) en un mapa interactivo, con tiempos de llegada en tiempo real, seguimiento GPS de buses, presencia colaborativa de usuarios y capa de trafico en tiempo real.
+Aplicacion web de transporte publico en tiempo real para la Comunidad de Madrid. Muestra paradas de autobuses urbanos (EMT) e interurbanos (CRTM) en un mapa interactivo, con tiempos de llegada en tiempo real, seguimiento GPS de buses, reportes colaborativos entre usuarios, presencia de otros usuarios en el mapa, capa de trafico en tiempo real y sistema de soporte con panel de administracion.
 
 Proyecto desarrollado como Trabajo de Fin de Ciclo (TFC) de 2o de DAW.
 
@@ -15,14 +15,14 @@ Proyecto desarrollado como Trabajo de Fin de Ciclo (TFC) de 2o de DAW.
 | Backend | Node.js — Edge Functions en Vercel (`/api`) |
 | Base de datos | Supabase (PostgreSQL) |
 | Autenticacion | Supabase Auth |
-| Presencia en tiempo real | Supabase Realtime (Presence) |
+| Presencia colaborativa | Supabase REST (polling, tabla `user_locations`) |
 | Email transaccional | Gmail SMTP via Nodemailer |
 | APIs de transporte | EMT Madrid (buses urbanos) + CRTM (buses interurbanos) |
 | Trafico en tiempo real | TomTom Traffic API (incidencias + flow tiles) |
 | Enrutado GPS | OSRM (routing publico sin API key) |
 | Tiles del mapa | CartoDB (claro y oscuro) |
 | Despliegue | Vercel |
-| Animaciones | GSAP, Framer Motion, Three.js / React Three Fiber |
+| Animaciones | GSAP, motion (Framer Motion), Three.js / React Three Fiber |
 
 ---
 
@@ -31,7 +31,7 @@ Proyecto desarrollado como Trabajo de Fin de Ciclo (TFC) de 2o de DAW.
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                     NAVEGADOR (React)                        │
-│  Solo hace fetch a /api/*  +  Supabase Auth                  │
+│  Solo hace fetch a /api/*  +  Supabase Auth/REST directo     │
 │  Excepcion: tiles de trafico van directo a TomTom (ver nota) │
 └──────────────────────┬──────────────────────────────────────┘
                        │  HTTPS
@@ -41,18 +41,22 @@ Proyecto desarrollado como Trabajo de Fin de Ciclo (TFC) de 2o de DAW.
 │  /api/stops        /api/lines       /api/arrivals            │
 │  /api/reports      /api/report-votes                         │
 │  /api/traffic        ← incidencias TomTom con cache global   │
-│  /api/support        ← tickets de soporte + email admin      │
+│  /api/support        ← tickets de soporte + email Gmail SMTP │
 └────────┬─────────────────────────┬────────────────┬──────────┘
          │                         │                │
 ┌────────▼──────────┐   ┌──────────▼──────┐  ┌─────▼────────┐
 │  Supabase (BD)    │   │  EMT / CRTM     │  │  TomTom API  │
 │  static_stops     │   │  APIs transporte│  │  Incidencias │
-│  Supabase Auth    │   └─────────────────┘  └──────────────┘
-│  Supabase Realtime│
+│  favourites       │   └─────────────────┘  └──────────────┘
+│  reports          │
+│  report_votes     │
+│  user_locations   │
+│  support_tickets  │
+│  Supabase Auth    │
 └───────────────────┘
 ```
 
-**El navegador nunca toca la base de datos directamente.** La excepcion es Supabase Auth, disenado para usarse desde el cliente (igual que Firebase Auth o Auth0).
+**El navegador nunca toca la base de datos directamente** para operaciones de negocio. La excepcion es Supabase Auth (disenado para usarse desde el cliente, igual que Firebase Auth) y las lecturas de presencia (`user_locations`), que usan la anon key con RLS.
 
 **Los tiles de trafico (flow tiles) se piden directamente al servidor de TomTom** desde el navegador. Esto es inevitable: son imagenes de mapa que Leaflet descarga tile a tile, y enrutarlas por el backend seria demasiado lento e imposible con el plan gratuito de Vercel. Las incidencias en cambio si pasan por el backend para ocultar la API key y aprovechar la cache compartida.
 
@@ -66,13 +70,13 @@ Proyecto desarrollado como Trabajo de Fin de Ciclo (TFC) de 2o de DAW.
 Usuario rellena login
   └─▶ AuthModal.jsx
         └─▶ supabase.auth.signInWithPassword()   ← cliente Supabase Auth (excepcion justificada)
-              └─▶ App.jsx detecta onAuthStateChange
+              └─▶ App.jsx detecta onAuthStateChange(SIGNED_IN)
                     └─▶ navega a /mapa
 ```
 
-En registro guarda `full_name` en los metadatos del usuario. La opcion "Recordarme" elige entre `localStorage` (persistente) o `sessionStorage` (solo la pestana).
+En registro guarda `full_name` en los metadatos del usuario. La opcion "Recordarme" elige entre `localStorage` (persistente) o `sessionStorage` (solo la pestana) mediante `customStorage` en `supabaseClient.js`.
 
-Para recuperacion de contrasena: `supabase.auth.resetPasswordForEmail()` envia un email con un enlace. Al hacer clic, Supabase redirige a la app con un token. `App.jsx` detecta el evento `PASSWORD_RECOVERY` y muestra `ResetPasswordModal.jsx`.
+Para recuperacion de contrasena: `supabase.auth.resetPasswordForEmail()` envia email con enlace. Al hacer clic, Supabase redirige a la app con un token en el hash. `supabaseClient.js` detecta `type=recovery` en el hash de forma sincrona (antes de que React monte) para evitar que el auto-login interfiera. `App.jsx` detecta el evento `PASSWORD_RECOVERY` y muestra `ResetPasswordModal.jsx`.
 
 ---
 
@@ -123,6 +127,7 @@ Usuario hace clic en una fila de llegada (linea + destino)
               └─▶ crtmService.getBusLocation(mode, codLine, direction, codStop)
                     ├─ modo 6 (EMT): extrae GPS del response de llegadas
                     └─ modo 8 (CRTM): GET /api/crtm/Widget/GetLineLocation...
+                          └─▶ filtra por campo direction del vehiculo (lado cliente)
                           └─▶ selecciona el bus mas cercano a la parada (Math.hypot)
                           └─▶ GET OSRM routing API → dibuja ruta en el mapa
 ```
@@ -139,7 +144,7 @@ Usuario activa el boton de trafico
   │           └─▶ api/traffic.js redondea el bbox a una cuadricula de ~2km
   │                 └─▶ cache 5 minutos — vistas cercanas reutilizan la misma respuesta
   │                       └─▶ TomTom Traffic Incidents API v5
-  │                             └─▶ marcadores con icono segun tipo de incidencia
+  │                             └─▶ marcadores con icono Tabler segun tipo de incidencia
   │
   └─▶ TileLayer flow tiles (colores en carreteras)
         └─▶ Leaflet pide imagenes directamente a TomTom
@@ -190,10 +195,35 @@ Los reportes caducan automaticamente en 2 horas. El `busId` del vehiculo se guar
 
 ```
 MapPage.jsx monta usePresence(userLocation, userName, avatarIndex)
-  └─▶ Canal Supabase Realtime "map-presence"
-        └─▶ emite posicion + nombre + avatar cada 10 segundos
-              └─▶ renderiza avatares de otros usuarios en el mapa
+  └─▶ Al conectar y cada 10 minutos:
+        └─▶ supabase.from('user_locations').upsert({ lat, lng, name, avatar })
+              └─▶ lectura de otros usuarios activos en los ultimos 10 minutos
+                    └─▶ renderiza avatares de otros usuarios en el mapa
 ```
+
+Implementado con polling a Supabase REST (no Realtime). Cada usuario guarda su posicion en la tabla `user_locations` y lee las posiciones de los demas periodicamente.
+
+---
+
+### 9. Sistema de soporte
+
+```
+Usuario pulsa "Soporte" en el Sidebar
+  └─▶ SupportModal.jsx (elige tipo + descripcion opcional)
+        └─▶ POST /api/support { type, description }
+              └─▶ ticket guardado en BD tabla support_tickets (status: pending)
+
+Admin accede a /admin → AdminPanel.jsx
+  └─▶ GET /api/support   ← solo si app_metadata.role === 'admin'
+        └─▶ tabla de tickets con estado, tipo y descripcion
+              ├─▶ "Responder": textarea + enviar
+              │     └─▶ PATCH /api/support { ticketId, response }
+              │           ├─ actualiza ticket: admin_response + responded_at + status: reviewed
+              │           └─ envia email al usuario via Gmail SMTP (Nodemailer)
+              └─▶ "Eliminar": confirmacion → DELETE /api/support { ticketId }
+```
+
+El rol de administrador se asigna via SQL en Supabase: `UPDATE auth.users SET raw_app_meta_data = raw_app_meta_data || '{"role":"admin"}'::jsonb WHERE email = 'tu@email.com'`.
 
 ---
 
@@ -215,7 +245,7 @@ Quick-Arrival-App/
 ├── src/
 │   ├── App.jsx                   # Rutas (/, /mapa, /admin) + control de sesion Supabase
 │   ├── main.jsx                  # Punto de entrada React
-│   ├── supabaseClient.js         # Cliente Supabase + logica "Recordarme"
+│   ├── supabaseClient.js         # Cliente Supabase + logica "Recordarme" + deteccion recovery
 │   │
 │   ├── services/
 │   │   ├── stopsService.js       # Paradas y lineas
@@ -224,38 +254,38 @@ Quick-Arrival-App/
 │   │   └── favoritesService.js   # CRUD de paradas favoritas en Supabase
 │   │
 │   ├── hooks/
-│   │   └── usePresence.js        # Hook Supabase Realtime para presencia
+│   │   └── usePresence.js        # Presencia colaborativa via polling a user_locations
 │   │
 │   └── components/
-│       ├── first-page/           # Landing page
-│       └── map-page/
-│           ├── MapPage.jsx               # Componente principal del mapa
-│           ├── MapPage.css               # Estilos (CSS nesting)
-│           ├── BusStopsLayer.jsx         # Capa de paradas con popups
-│           ├── LiveBusLayer.jsx          # Seguimiento GPS del bus
-│           ├── TrafficIncidentsLayer.jsx # Incidencias de trafico (TomTom)
-│           ├── FavouritePopupLayer.jsx   # Popup de parada favorita (desktop)
-│           ├── FavouriteModal.jsx        # Modal para nombrar un favorito
-│           ├── StopBottomSheet.jsx       # Panel inferior de parada (movil)
-│           ├── ReportModal.jsx           # Modal de reporte en 3 pasos
-│           ├── ReportModal.css
-│           ├── ReportsPanel.jsx          # Panel de reportes agrupados por categoria con votos
-│           ├── ReportsPanel.css
-│           ├── SupportModal.jsx          # Modal de soporte (tipos: bug, datos, sugerencia...)
-│           ├── SupportModal.css
-│           ├── Sidebar.jsx               # Menu lateral (incluye acceso a soporte y panel admin)
-│           ├── LocateControl.jsx         # Boton centrar en usuario
-│           └── mapIcons.js               # Iconos Leaflet
+│       ├── first-page/           # Landing page (login, registro, recuperacion)
+│       ├── map-page/
+│       │   ├── MapPage.jsx               # Componente principal del mapa
+│       │   ├── MapPage.css
+│       │   ├── BusStopsLayer.jsx         # Capa de paradas con popups
+│       │   ├── LiveBusLayer.jsx          # Seguimiento GPS del bus
+│       │   ├── TrafficIncidentsLayer.jsx # Incidencias de trafico (iconos Tabler)
+│       │   ├── FavouritePopupLayer.jsx   # Popup de parada favorita (desktop)
+│       │   ├── FavouriteModal.jsx        # Modal para nombrar un favorito
+│       │   ├── StopBottomSheet.jsx       # Panel inferior de parada (movil)
+│       │   ├── ReportModal.jsx           # Modal de reporte en 3 pasos
+│       │   ├── ReportModal.css
+│       │   ├── ReportsPanel.jsx          # Panel de reportes agrupados con votos
+│       │   ├── ReportsPanel.css
+│       │   ├── SupportModal.jsx          # Modal de soporte al usuario
+│       │   ├── SupportModal.css
+│       │   ├── Sidebar.jsx               # Menu lateral (favoritos, soporte, admin)
+│       │   ├── LocateControl.jsx         # Boton centrar en usuario
+│       │   └── mapIcons.js               # Iconos Leaflet
 │       └── admin/
-│           ├── AdminPanel.jsx            # Panel admin: lista tickets, responde por email, elimina
+│           ├── AdminPanel.jsx            # Panel admin: tickets, respuesta email, eliminar
 │           └── AdminPanel.css
 │
 ├── scripts/
 │   ├── setup-stops.sql           # SQL para crear la tabla en Supabase
 │   └── importStops.mjs           # Importa paradas del CRTM a Supabase
 │
-├── vercel.json                   # Rewrites de rutas en Vercel
-└── vite.config.js                # Proxies locales que replican las Edge Functions
+├── vercel.json                   # Rewrites de rutas + framework Vite (SPA fallback automatico)
+└── vite.config.js                # Configuracion minima de Vite (solo plugin React)
 ```
 
 ---
@@ -272,8 +302,8 @@ Quick-Arrival-App/
 | `POST /api/reports` | Crear reporte. Body: `type`, `metadata`, `description`, `lat`, `lng`, `lineName`, `busId` |
 | `POST /api/report-votes` | Votar un reporte. Body: `reportId`, `voteType` |
 | `POST /api/support` | Crear ticket de soporte. Body: `type`, `description`. Auth requerida |
-| `GET /api/support` | Listar todos los tickets. Solo admin (`app_metadata.role = 'admin'`) |
-| `PATCH /api/support` | Responder ticket y enviar email al usuario. Body: `ticketId`, `response`. Solo admin |
+| `GET /api/support` | Listar todos los tickets. Solo admin |
+| `PATCH /api/support` | Responder ticket y enviar email. Body: `ticketId`, `response`. Solo admin |
 | `DELETE /api/support` | Eliminar ticket. Body: `ticketId`. Solo admin |
 
 ---
@@ -283,9 +313,7 @@ Quick-Arrival-App/
 ### Desarrollo (`.env`)
 
 ```
-# Supabase
-VITE_SUPABASE_URL=https://tumoqeuueqbvfstdhdmn.supabase.co
-VITE_SUPABASE_ANON_KEY=tu_anon_key
+# Supabase — solo la service key va en .env (URL y anon key estan hardcodeadas en supabaseClient.js)
 SUPABASE_SERVICE_KEY=tu_service_key
 
 # EMT Madrid
@@ -305,7 +333,7 @@ TOMTOM_API_KEY=tu_key
 VITE_TOMTOM_API_KEY=tu_key
 
 # Gmail SMTP — para enviar emails de respuesta a tickets de soporte
-# Usa una contrasena de aplicacion de Google (no la contrasena normal de Gmail)
+# Requiere una contrasena de aplicacion de Google (no la contrasena normal)
 GMAIL_USER=tu_email@gmail.com
 GMAIL_APP_PASSWORD=xxxx_xxxx_xxxx_xxxx
 ```
@@ -351,13 +379,13 @@ GMAIL_APP_PASSWORD
 |---------|------|-------------|
 | `id` | uuid PK | Generado automaticamente |
 | `user_id` | uuid | FK a auth.users |
-| `type` | text | Categoria: seats, punctuality, crowding, noise, temperature, driver, accessibility |
-| `metadata` | jsonb | `{ value: "opcion", busId: "vehicleId" }` — busId aisla el reporte al bus concreto |
+| `type` | text | seats, punctuality, crowding, noise, temperature, driver, accessibility |
+| `metadata` | jsonb | `{ value: "opcion", busId: "vehicleId" }` |
 | `description` | text | Comentario libre (max 150 chars) |
 | `lat` / `lng` | float | Coordenadas al momento del reporte |
 | `line_name` | text | Nombre de la linea (ej: "27") |
-| `status` | text | `active` — los inactivos se ignoran |
-| `created_at` | timestamptz | Timestamp de creacion (reportes > 2h se excluyen en consultas) |
+| `status` | text | `active` |
+| `created_at` | timestamptz | Reportes con mas de 2h se excluyen en consultas |
 
 ### Tabla `report_votes` — votos en reportes
 
@@ -367,7 +395,17 @@ GMAIL_APP_PASSWORD
 | `user_id` | uuid | FK a auth.users |
 | `vote_type` | text | `up` o `down` |
 
-### Tabla `support_tickets` — tickets de soporte al admin
+### Tabla `user_locations` — presencia colaborativa
+
+| Columna | Tipo | Descripcion |
+|---------|------|-------------|
+| `user_id` | uuid PK | FK a auth.users |
+| `lat` / `lng` | float | Posicion del usuario |
+| `name` | text | Nombre de usuario |
+| `avatar` | int | Indice del avatar seleccionado |
+| `updated_at` | timestamptz | Se actualiza cada 10 minutos. Usuarios con > 10min se ignoran |
+
+### Tabla `support_tickets` — tickets de soporte
 
 | Columna | Tipo | Descripcion |
 |---------|------|-------------|
@@ -380,19 +418,22 @@ GMAIL_APP_PASSWORD
 | `responded_at` | timestamptz | Timestamp de la respuesta |
 | `created_at` | timestamptz | Timestamp de creacion |
 
-El rol de administrador se asigna via `app_metadata.role = 'admin'` en Supabase Auth (solo modificable desde el backend con service key).
-
 ---
 
 ## Instalacion y desarrollo
 
 ```bash
 npm install
-npm run dev     # arranca frontend + Edge Functions locales
-npm run build   # build de produccion
+npm run dev:vercel   # frontend (Vite) + Edge Functions reales via vercel dev — recomendado
+npm run dev          # solo frontend con Vite (sin APIs locales — solo iterar UI)
+npm run build        # build de produccion
 ```
 
-`vite.config.js` replica el comportamiento de las Edge Functions en local. No hace falta `vercel dev`.
+El desarrollo usa `vercel dev`, que arranca Vite por debajo y sirve las funciones de `/api/*` exactamente igual que en produccion (mismos archivos en `api/*.js`, mismas variables de entorno). Asi no hay duplicacion de logica de backend entre dev y prod: cualquier cambio en `api/*.js` aplica a los dos entornos sin replicar codigo.
+
+`vercel.json` define `"framework": "vite"`, por lo que Vercel detecta automaticamente el SPA fallback (no hace falta una regla manual `/(.*) → /index.html` que romperia las peticiones que Vite necesita servir en dev como `/src/main.jsx` o `/@vite/client`).
+
+**Requisito previo:** tener Vercel CLI instalado (`npm i -g vercel`) y el proyecto vinculado (`vercel link`). Si no esta vinculado, la primera ejecucion lo pide interactivamente.
 
 ---
 
@@ -400,16 +441,15 @@ npm run build   # build de produccion
 
 | API | Para que se usa | Via |
 |-----|----------------|-----|
-| Supabase Auth | Login, registro, recuperacion | Cliente (disenado para ello) |
-| Supabase REST | Paradas y favoritos | Backend (service key) |
-| Supabase Realtime | Presencia de usuarios | Cliente |
-| EMT Madrid | Tiempos y GPS urbanos | Backend (credenciales en env) |
-| CRTM Widgets | Tiempos y GPS interurbanos | Backend (spoofing Origin) |
-| TomTom Traffic | Incidencias | Backend (/api/traffic) |
-| TomTom Traffic | Flow tiles (colores carreteras) | Frontend directo (tiles) |
-| OSRM | Ruta GPS del bus a la parada | Frontend directo (publica) |
-| CartoDB | Tiles del mapa base | Frontend directo (publica) |
-| Gmail SMTP | Emails de respuesta a tickets de soporte | Backend (Nodemailer + app password) |
+| Supabase Auth | Login, registro, recuperacion de contrasena | Cliente (disenado para ello) |
+| Supabase REST | Paradas, favoritos, presencia, soporte | Backend (service key) y cliente (anon key + RLS) |
+| EMT Madrid | Tiempos y GPS buses urbanos | Backend (credenciales en env) |
+| CRTM Widgets | Tiempos y GPS buses interurbanos | Backend (spoofing Origin/Referer) |
+| TomTom Traffic | Incidencias de trafico | Backend (/api/traffic, cache 5 min) |
+| TomTom Traffic | Flow tiles (colores carreteras) | Frontend directo (tiles de imagen) |
+| OSRM | Ruta GPS del bus a la parada | Frontend directo (API publica) |
+| CartoDB | Tiles del mapa base (claro y oscuro) | Frontend directo (API publica) |
+| Gmail SMTP | Emails de respuesta a tickets de soporte | Backend (Nodemailer + app password Google) |
 
 ---
 
@@ -424,11 +464,44 @@ Los tiles son imagenes de mapa que Leaflet pide de 20 en 20 al mover/hacer zoom.
 **Bbox redondeado en /api/traffic**
 Las coordenadas del mapa cambian con cada movimiento. Sin redondeo, cada posicion generaria una entrada de cache distinta y la cache nunca daria hit. Se redondea a una cuadricula de ~2km para agrupar peticiones cercanas.
 
+**Presencia con polling en lugar de Supabase Realtime**
+Supabase Realtime Presence tiene limitaciones en el plan gratuito y mayor complejidad. El polling cada 10 minutos es suficiente para mostrar a otros usuarios en el mapa sin necesidad de actualizaciones en tiempo real. Usa la tabla `user_locations` con upsert y filtro por `updated_at`.
+
+**Gmail SMTP para emails de soporte**
+Se usa la cuenta Gmail del proyecto con una contrasena de aplicacion de Google (sin OAuth). Evita depender de servicios externos de pago (Resend, SendGrid) para el volumen bajo de emails de soporte. Nodemailer gestiona la conexion SMTP con el servidor de Gmail.
+
 **Por que Node.js en Vercel y no Laravel / Express externo**
 Vercel ya ejecuta las funciones de los proxies en Node.js. Extender eso con endpoints propios evita aprender tecnologia nueva y mantiene todo en el mismo repositorio con despliegue automatico.
 
 **Por que Supabase Auth sigue en el frontend**
-Supabase Auth esta disenado para usarse desde el cliente, igual que Firebase Auth o Auth0. Es el unico acceso directo del navegador a Supabase.
+Supabase Auth esta disenado para usarse desde el cliente, igual que Firebase Auth o Auth0. La anon key siendo publica es por diseno — la seguridad viene de las reglas RLS en la base de datos.
 
 **Paradas solo al zoom >= 15**
 Por encima de ese nivel hay demasiadas paradas y Leaflet no esta pensado para renderizar miles de marcadores a la vez.
+
+**Como funciona el proxy CRTM (rewrite de Vercel + query param `path`)**
+El CRTM bloquea peticiones que no vengan de su propia web, asi que el frontend nunca llama a `crtm.es` directamente. En su lugar llama a `/api/crtm/...` y Vercel intercepta esa URL antes de que llegue al handler:
+
+```
+Frontend llama a:
+  GET /api/crtm/widget/proxy/transport/stops/emt/8__stops__stop__4011_____
+
+Vercel aplica el rewrite de vercel.json:
+  source:      /api/crtm/(.*)
+  destination: /api/crtm-proxy?path=$1
+              ↑ el (.*) captura todo lo que va detras de /api/crtm/
+              ↑ y lo pega como query param llamado "path"
+
+El handler recibe internamente:
+  GET /api/crtm-proxy?path=widget/proxy/transport/stops/emt/8__stops__stop__4011_____
+
+crtm-proxy.js lee ese param y reconstruye la URL real:
+  url.searchParams.get('path')  →  "widget/proxy/transport/stops/emt/8__stops__..."
+  targetUrl = "https://www.crtm.es/" + path
+            = "https://www.crtm.es/widget/proxy/transport/stops/emt/8__stops__..."
+
+Si habia query params adicionales (?foo=bar), tambien llegan como params de la edge function
+y se reanyaden a la URL destino despues de borrar el "path" interno.
+```
+
+En resumen: Vercel convierte el segmento de ruta en un query param `path` antes de llamar al handler. El proxy solo tiene que leer ese param y pegar la URL de `crtm.es` delante. Las cabeceras `Origin` y `Referer` se falsifican para que CRTM crea que la peticion viene de su propia web.

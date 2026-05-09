@@ -502,9 +502,10 @@ Vercel Edge Function que actua como proxy para las peticiones al CRTM. Necesario
 
 | Ruta | Destino | Tipo |
 |------|---------|------|
-| `/api/emt/(.*)` | `https://openapi.emtmadrid.es/v1/$1` | Rewrite directo |
-| `/api/crtm/(.*)` | `/api/crtm-proxy` | Edge Function |
-| `/(.*)`| `/index.html` | SPA fallback |
+| `/api/emt/(.*)` | `/api/emt-proxy?path=$1` | Edge Function (`emt-proxy.js`) |
+| `/api/crtm/(.*)` | `/api/crtm-proxy?path=$1` | Edge Function (`crtm-proxy.js`) |
+
+`vercel.json` declara ademas `"framework": "vite"`. Esto hace que Vercel aplique el SPA fallback automaticamente (en produccion sirve `index.html` para rutas client-side de React Router, en `vercel dev` deja pasar las peticiones que Vite necesita como `/src/main.jsx` o `/@vite/client`). No hace falta una regla manual `/(.*) → /index.html` — de hecho, esa regla rompe el desarrollo local con `vercel dev` porque captura las peticiones de modulos JS de Vite.
 
 ---
 

@@ -1,5 +1,6 @@
 // StopBottomSheet.jsx — Panel inferior deslizable con info de la parada
 // Se abre al hacer click en una parada, se puede arrastrar hacia arriba para expandir
+// Esto es simplemente para el movil 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { getStopTimes } from '../../services/crtmService';
 import './StopBottomSheet.css';
@@ -97,9 +98,11 @@ export default function StopBottomSheet({ stop, isDarkMode, onClose, onSelectBus
   const esInterurbano = stop.codStop?.startsWith('8_');
   const minutosCacheados = cachedAt ? Math.round((Date.now() - cachedAt.getTime()) / 60000) : 0;
 
-  // Calcular transform según estado
+  // Calcular transform segun estado del sheet
+  // pagina caluclo : transformpx
   const baseTransform = expanded
     ? `translateY(${Math.max(0, dragOffset)}px)`
+    // Bug visual arreglar ****
     : `translateY(calc(100% - ${PEEK_HEIGHT}px + ${Math.max(0, dragOffset)}px))`;
 
   return (
@@ -134,7 +137,7 @@ export default function StopBottomSheet({ stop, isDarkMode, onClose, onSelectBus
         <button className="sheet-close-btn" onClick={onClose} aria-label="Cerrar">✕</button>
       </div>
 
-      {/* Líneas que pasan por la parada */}
+      {/* Lineas que pasan por la parada */}
       {lines.length > 0 && (
         <div className="sheet-lines">
           {lines.map((line) => (
@@ -146,6 +149,7 @@ export default function StopBottomSheet({ stop, isDarkMode, onClose, onSelectBus
       {/* Contenido scrollable (tiempos) */}
       <div className="sheet-scroll-area" ref={scrollAreaRef}>
 
+        {/* Encontrar un spinner mejor para esto *** */}
         {loading && (
           <div className="sheet-loading">
             <span className="sheet-spinner" />
@@ -200,6 +204,7 @@ export default function StopBottomSheet({ stop, isDarkMode, onClose, onSelectBus
             </div>
 
             <button className="sheet-refresh-btn" onClick={fetchArrivals}>
+              {/* copy paste de icono, recordar pagina : pastecode */}
               ↻ Actualizar
             </button>
           </>

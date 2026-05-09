@@ -28,7 +28,7 @@ export default function usePresence(userLocation, userName, avatar) {
     return () => clearInterval(id);
   }, [userLocation, userName, avatar]);
 
-  // Leer ubicaciones de otros usuarios cada 10 minutos
+  // Esto va a leer ubicaciones de otros usuarios cada 10 minutos
   useEffect(() => {
     async function leerUbicaciones() {
       const { data: { user } } = await supabase.auth.getUser();
