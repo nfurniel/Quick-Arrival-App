@@ -22,7 +22,7 @@ Proyecto desarrollado como Trabajo de Fin de Ciclo (TFC) de 2o de DAW.
 | Enrutado GPS | OSRM (routing publico sin API key) |
 | Tiles del mapa | CartoDB (claro y oscuro) |
 | Despliegue | Vercel |
-| Animaciones | GSAP, Framer Motion, Three.js / React Three Fiber |
+| Animaciones | GSAP, motion (Framer Motion), Three.js / React Three Fiber |
 
 ---
 
@@ -284,8 +284,8 @@ Quick-Arrival-App/
 │   ├── setup-stops.sql           # SQL para crear la tabla en Supabase
 │   └── importStops.mjs           # Importa paradas del CRTM a Supabase
 │
-├── vercel.json                   # Rewrites de rutas en Vercel
-└── vite.config.js                # Plugin local que replica todas las Edge Functions
+├── vercel.json                   # Rewrites de rutas + framework Vite (SPA fallback automatico)
+└── vite.config.js                # Configuracion minima de Vite (solo plugin React)
 ```
 
 ---
@@ -424,11 +424,16 @@ GMAIL_APP_PASSWORD
 
 ```bash
 npm install
-npm run dev     # arranca frontend + Edge Functions locales
-npm run build   # build de produccion
+npm run dev:vercel   # frontend (Vite) + Edge Functions reales via vercel dev — recomendado
+npm run dev          # solo frontend con Vite (sin APIs locales — solo iterar UI)
+npm run build        # build de produccion
 ```
 
-`vite.config.js` replica el comportamiento de todas las Edge Functions en local mediante un plugin de middleware. No hace falta `vercel dev`.
+El desarrollo usa `vercel dev`, que arranca Vite por debajo y sirve las funciones de `/api/*` exactamente igual que en produccion (mismos archivos en `api/*.js`, mismas variables de entorno). Asi no hay duplicacion de logica de backend entre dev y prod: cualquier cambio en `api/*.js` aplica a los dos entornos sin replicar codigo.
+
+`vercel.json` define `"framework": "vite"`, por lo que Vercel detecta automaticamente el SPA fallback (no hace falta una regla manual `/(.*) → /index.html` que romperia las peticiones que Vite necesita servir en dev como `/src/main.jsx` o `/@vite/client`).
+
+**Requisito previo:** tener Vercel CLI instalado (`npm i -g vercel`) y el proyecto vinculado (`vercel link`). Si no esta vinculado, la primera ejecucion lo pide interactivamente.
 
 ---
 
@@ -473,3 +478,30 @@ Supabase Auth esta disenado para usarse desde el cliente, igual que Firebase Aut
 
 **Paradas solo al zoom >= 15**
 Por encima de ese nivel hay demasiadas paradas y Leaflet no esta pensado para renderizar miles de marcadores a la vez.
+
+**Como funciona el proxy CRTM (rewrite de Vercel + query param `path`)**
+El CRTM bloquea peticiones que no vengan de su propia web, asi que el frontend nunca llama a `crtm.es` directamente. En su lugar llama a `/api/crtm/...` y Vercel intercepta esa URL antes de que llegue al handler:
+
+```
+Frontend llama a:
+  GET /api/crtm/widget/proxy/transport/stops/emt/8__stops__stop__4011_____
+
+Vercel aplica el rewrite de vercel.json:
+  source:      /api/crtm/(.*)
+  destination: /api/crtm-proxy?path=$1
+              ↑ el (.*) captura todo lo que va detras de /api/crtm/
+              ↑ y lo pega como query param llamado "path"
+
+El handler recibe internamente:
+  GET /api/crtm-proxy?path=widget/proxy/transport/stops/emt/8__stops__stop__4011_____
+
+crtm-proxy.js lee ese param y reconstruye la URL real:
+  url.searchParams.get('path')  →  "widget/proxy/transport/stops/emt/8__stops__..."
+  targetUrl = "https://www.crtm.es/" + path
+            = "https://www.crtm.es/widget/proxy/transport/stops/emt/8__stops__..."
+
+Si habia query params adicionales (?foo=bar), tambien llegan como params de la edge function
+y se reanyaden a la URL destino despues de borrar el "path" interno.
+```
+
+En resumen: Vercel convierte el segmento de ruta en un query param `path` antes de llamar al handler. El proxy solo tiene que leer ese param y pegar la URL de `crtm.es` delante. Las cabeceras `Origin` y `Referer` se falsifican para que CRTM crea que la peticion viene de su propia web.
