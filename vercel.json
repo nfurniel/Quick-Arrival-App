@@ -8,6 +8,10 @@
     {
       "source": "/api/crtm/(.*)",
       "destination": "/api/crtm-proxy?path=$1"
+    },
+    {
+      "source": "/((?!api/|assets/|src/|@|node_modules/|__).*)",
+      "destination": "/index.html"
     }
   ]
 }
