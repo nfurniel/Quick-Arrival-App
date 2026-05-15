@@ -77,6 +77,8 @@ export default function StopBottomSheet({ stop, isDarkMode, onClose, onSelectBus
     }
   };
 
+  // Al soltar el dedo decidimos si el panel queda expanded, collapsed o cerrado
+  // segun cuanto se haya arrastrado. Los valores 60/70/120 son a ojo, lo que va bien
   const handlePointerUp = (e) => {
     if (!dragStart.current) return;
     const delta = e.clientY - dragStart.current.y;

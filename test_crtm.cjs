@@ -38,7 +38,7 @@ async function testApi() {
   });
 
   // Try GetLineLocation
-  console.log("\nFetching GetLineLocation...");
+  console.log("\n Fetching GetLineLocation...");
   const mode = first.line.codMode || 8;
   const codLine = first.line.codLine;
   const direction = first.direction;

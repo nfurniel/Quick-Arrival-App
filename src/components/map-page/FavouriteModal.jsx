@@ -1,3 +1,4 @@
+// Modal para ponerle alias a una parada favorita (Casa, Trabajo, etc)
 import { useState, useEffect, useRef } from 'react';
 import './FavouriteModal.css';
 
@@ -6,12 +7,14 @@ export default function FavouriteModal({ stopName, isDarkMode, existingAliases =
   const [error, setError] = useState('');
   const inputRef = useRef(null);
 
+  // Foco automatico al input al abrir el modal
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
 
   const handleSave = () => {
     const trimmed = alias.trim();
+    // No dejamos repetir alias (comparando sin mayusculas/espacios)
     if (trimmed && existingAliases.some(a => a.trim().toLowerCase() === trimmed.toLowerCase())) {
       setError('Ya tienes un favorito con ese nombre');
       return;

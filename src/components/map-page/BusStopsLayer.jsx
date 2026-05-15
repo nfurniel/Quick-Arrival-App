@@ -11,11 +11,14 @@ const isMobile = () => window.innerWidth < 768;
 export default function BusStopsLayer({ isDarkMode, onSelectBus, onSelectStop, selectedBus, favourites, onToggleFavourite }) {
   const [stops, setStops] = useState([]);
   const debounceRef = useRef(null);
+  // Cuando el usuario mueve el mapa volvemos a pedir las paradas del area que se ve
   const map = useMapEvents({ moveend: () => cargarParadas() });
 
+  // Por debajo de zoom 15 hay demasiadas paradas y Leaflet se ahoga
   const MIN_ZOOM_PARADAS = 15;
 
   const cargarParadas = useCallback(() => {
+    // Debounce de 300ms para no pegar petición por cada pixel que se mueva
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       if (map.getZoom() < MIN_ZOOM_PARADAS) { setStops([]); return; }
@@ -75,6 +78,7 @@ export default function BusStopsLayer({ isDarkMode, onSelectBus, onSelectStop, s
 function StopMarker({ position, icon, isActive, isDarkMode, stopName, stopType, lines, codStop, stop, onSelectBus, onSelectStop, isFavourite, onToggleFavourite }) {
   const [isOpen, setIsOpen] = useState(false);
 
+  // En movil abrimos el bottom sheet, en escritorio el popup del propio Leaflet
   const handleClick = () => {
     if (isMobile()) {
       onSelectStop({ codStop, name: stopName, typeLabel: stopType, lines, lat: stop.lat, lng: stop.lng, stopId: stop.stop_id });
@@ -130,6 +134,8 @@ function BusStopPopup({ stopName, stopType, lines, codStop, stopLat, stopLng, st
 
   const esInterurbano = codStop.startsWith('8_');
 
+  // Pide los tiempos de llegada al backend. Usamos AbortController para cancelar
+  // la peticion si el usuario cierra el popup antes de que llegue la respuesta
   const pedirTiempos = useCallback(async () => {
     if (abortRef.current) abortRef.current.abort();
     const controller = new AbortController();

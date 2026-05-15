@@ -36,9 +36,11 @@ function obtenerCoordenadas(incidente) {
   const geo = incidente.geometry;
   if (!geo?.coordinates) return null;
 
+  // OJO: las APIs devuelven [lng, lat] pero Leaflet usa [lat, lng] (al reves)
   if (geo.type === 'Point') {
     return [geo.coordinates[1], geo.coordinates[0]];
   }
+  // Si es una linea cogemos el punto del medio para poner el icono ahi
   if (geo.type === 'LineString' && geo.coordinates.length > 0) {
     const centro = geo.coordinates[Math.floor(geo.coordinates.length / 2)];
     return [centro[1], centro[0]];
@@ -124,3 +126,4 @@ export default function TrafficIncidentsLayer({ visible }) {
     })
     .filter(Boolean);
 }
+

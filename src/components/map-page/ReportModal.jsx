@@ -81,6 +81,7 @@ const REPORT_TYPES = [
   },
 ];
 
+// Modal en 3 pasos: tipo -> opcion -> confirmar
 export default function ReportModal({ bus, userLocation, isDarkMode, onClose, onSuccess }) {
   const [step, setStep] = useState('type');
   const [selectedType, setSelectedType] = useState(null);
@@ -126,6 +127,7 @@ export default function ReportModal({ bus, userLocation, isDarkMode, onClose, on
         }),
       });
 
+      // El 409 es cuando el backend detecta que ya reportaste lo mismo en las ultimas 2h
       if (!r.ok) {
         const json = await r.json().catch(() => ({}));
         throw new Error(r.status === 409 ? json.error : 'Error al enviar el reporte');

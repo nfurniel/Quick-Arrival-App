@@ -1,6 +1,6 @@
 # Quick Arrival App
 
-Aplicacion web de transporte publico en tiempo real para la Comunidad de Madrid. Muestra paradas de autobuses urbanos (EMT) e interurbanos (CRTM) en un mapa interactivo, con tiempos de llegada en tiempo real, seguimiento GPS de buses, reportes colaborativos entre usuarios, presencia de otros usuarios en el mapa, capa de trafico en tiempo real y sistema de soporte con panel de administracion.
+Aplicacion web de transporte publico en tiempo real para la Comunidad de Madrid. Muestra paradas de autobuses urbanos (EMT) e interurbanos (CRTM) en un mapa interactivo, con tiempos de llegada en tiempo real, seguimiento GPS de buses, reportes colaborativos entre usuarios, presencia de otros usuarios en el mapa, capa de trafico en tiempo real, sistema de soporte y un panel de administracion completo con moderacion de reportes y anuncios globales para todos los usuarios.
 
 Proyecto desarrollado como Trabajo de Fin de Ciclo (TFC) de 2o de DAW.
 
@@ -42,6 +42,7 @@ Proyecto desarrollado como Trabajo de Fin de Ciclo (TFC) de 2o de DAW.
 │  /api/reports      /api/report-votes                         │
 │  /api/traffic        ← incidencias TomTom con cache global   │
 │  /api/support        ← tickets de soporte + email Gmail SMTP │
+│  /api/announcements  ← anuncios globales (popup para usuarios)│
 └────────┬─────────────────────────┬────────────────┬──────────┘
          │                         │                │
 ┌────────▼──────────┐   ┌──────────▼──────┐  ┌─────▼────────┐
@@ -52,6 +53,7 @@ Proyecto desarrollado como Trabajo de Fin de Ciclo (TFC) de 2o de DAW.
 │  report_votes     │
 │  user_locations   │
 │  support_tickets  │
+│  announcements    │
 │  Supabase Auth    │
 └───────────────────┘
 ```
@@ -205,7 +207,12 @@ Implementado con polling a Supabase REST (no Realtime). Cada usuario guarda su p
 
 ---
 
-### 9. Sistema de soporte
+### 9. Panel de administracion (3 pestañas)
+
+El admin accede a `/admin` → `AdminPanel.jsx` con 3 tabs: **Soporte**, **Reportes** y **Anuncios**.
+El rol se asigna via SQL en Supabase: `UPDATE auth.users SET raw_app_meta_data = raw_app_meta_data || '{"role":"admin"}'::jsonb WHERE email = 'tu@email.com'`.
+
+#### 9.1 Tab Soporte — tickets de los usuarios
 
 ```
 Usuario pulsa "Soporte" en el Sidebar
@@ -213,17 +220,50 @@ Usuario pulsa "Soporte" en el Sidebar
         └─▶ POST /api/support { type, description }
               └─▶ ticket guardado en BD tabla support_tickets (status: pending)
 
-Admin accede a /admin → AdminPanel.jsx
+Admin → tab Soporte (SupportTab.jsx)
   └─▶ GET /api/support   ← solo si app_metadata.role === 'admin'
         └─▶ tabla de tickets con estado, tipo y descripcion
-              ├─▶ "Responder": textarea + enviar
-              │     └─▶ PATCH /api/support { ticketId, response }
-              │           ├─ actualiza ticket: admin_response + responded_at + status: reviewed
-              │           └─ envia email al usuario via Gmail SMTP (Nodemailer)
-              └─▶ "Eliminar": confirmacion → DELETE /api/support { ticketId }
+              ├─▶ "Responder": PATCH /api/support → actualiza ticket + email Gmail SMTP
+              └─▶ "Eliminar": DELETE /api/support { ticketId }
 ```
 
-El rol de administrador se asigna via SQL en Supabase: `UPDATE auth.users SET raw_app_meta_data = raw_app_meta_data || '{"role":"admin"}'::jsonb WHERE email = 'tu@email.com'`.
+#### 9.2 Tab Reportes — moderacion de reportes colaborativos
+
+```
+Admin → tab Reportes (ReportsTab.jsx)
+  └─▶ GET /api/reports?admin=1   ← lista TODOS los reportes con username
+        ├─ El backend hace 2 consultas: reports + profiles (in.(...)) y los junta
+        ├─▶ "Advertir": POST /api/reports { action:'warn', reportId, motivo, deleteAfter }
+        │     ├─ envia email de advertencia al autor (Gmail SMTP)
+        │     └─ elimina el reporte si deleteAfter:true
+        │     └─ incluye 3 plantillas de motivo predefinidas (reporte falso, lenguaje inapropiado, contradictorio)
+        └─▶ "Eliminar": DELETE /api/reports { reportId }
+```
+
+#### 9.3 Tab Anuncios — CRUD de avisos globales
+
+```
+Admin → tab Anuncios (AnnouncementsTab.jsx)
+  ├─ Crear:    POST /api/announcements { title, body, type, active }
+  ├─ Editar:   PATCH /api/announcements { id, ... }
+  ├─ Activar:  PATCH /api/announcements { id, active }
+  ├─ Eliminar: DELETE /api/announcements { id }
+  └─ Listar:   GET /api/announcements?admin=1 (todos)
+
+Tipos: 'info' (azul), 'warning' (naranja), 'danger' (rojo)
+```
+
+**Como ven los usuarios los anuncios:**
+
+```
+MapPage monta <AnnouncementPopup />
+  └─▶ GET /api/announcements   ← sin parametros = solo activos (lectura publica)
+        └─▶ filtra los IDs ya vistos por el usuario en localStorage[seen_announcements]
+              └─▶ muestra como popup uno a uno, con ribbon coloreado segun type
+                    └─▶ al cerrar, guarda el ID en localStorage para no repetirlo
+```
+
+El popup tiene estilo bottom-sheet en movil, soporta dark mode y usa iconos Tabler. Si el admin crea varios anuncios activos, el popup los encola y muestra contador `1/3`, `2/3`...
 
 ---
 
@@ -236,9 +276,10 @@ Quick-Arrival-App/
 │   ├── lines.js                  # GET /api/lines — todas las lineas unicas
 │   ├── arrivals.js               # GET /api/arrivals — tiempos EMT/CRTM con cache compartida
 │   ├── traffic.js                # GET /api/traffic — incidencias TomTom con cache y bbox snap
-│   ├── reports.js                # GET + POST /api/reports — reportes colaborativos por bus
+│   ├── reports.js                # GET + POST + DELETE /api/reports — reportes + moderacion admin
 │   ├── report-votes.js           # POST /api/report-votes — votos en reportes
 │   ├── support.js                # GET + POST + PATCH + DELETE /api/support — tickets de soporte
+│   ├── announcements.js          # GET + POST + PATCH + DELETE /api/announcements — anuncios globales
 │   ├── emt-proxy.js              # Proxy EMT (legacy, aun usado para GPS de buses)
 │   └── crtm-proxy.js             # Proxy CRTM con spoofing de Origin/Referer
 │
@@ -273,15 +314,21 @@ Quick-Arrival-App/
 │       │   ├── ReportsPanel.css
 │       │   ├── SupportModal.jsx          # Modal de soporte al usuario
 │       │   ├── SupportModal.css
+│       │   ├── AnnouncementPopup.jsx     # Popup de anuncios globales (una vez por usuario)
+│       │   ├── AnnouncementPopup.css
 │       │   ├── Sidebar.jsx               # Menu lateral (favoritos, soporte, admin)
 │       │   ├── LocateControl.jsx         # Boton centrar en usuario
 │       │   └── mapIcons.js               # Iconos Leaflet
 │       └── admin/
-│           ├── AdminPanel.jsx            # Panel admin: tickets, respuesta email, eliminar
+│           ├── AdminPanel.jsx            # Layout con tabs Soporte/Reportes/Anuncios
+│           ├── SupportTab.jsx            # Tab 1: tickets de soporte (responder + eliminar)
+│           ├── ReportsTab.jsx            # Tab 2: moderacion de reportes (advertir + eliminar)
+│           ├── AnnouncementsTab.jsx      # Tab 3: CRUD de anuncios globales
 │           └── AdminPanel.css
 │
 ├── scripts/
-│   ├── setup-stops.sql           # SQL para crear la tabla en Supabase
+│   ├── setup-stops.sql           # SQL para crear la tabla de paradas en Supabase
+│   ├── setup-announcements.sql   # SQL para crear la tabla de anuncios + RLS
 │   └── importStops.mjs           # Importa paradas del CRTM a Supabase
 │
 ├── vercel.json                   # Rewrites de rutas + framework Vite (SPA fallback automatico)
@@ -299,12 +346,20 @@ Quick-Arrival-App/
 | `GET /api/arrivals` | Tiempos EMT o CRTM con cache compartida. Param: `codStop` |
 | `GET /api/traffic` | Incidencias TomTom con cache 5 min y bbox snap. Params: `minLon`, `minLat`, `maxLon`, `maxLat` |
 | `GET /api/reports` | Reportes activos de las ultimas 2h. Params: `lineName`, `busId` (opcional) |
+| `GET /api/reports?admin=1` | Lista TODOS los reportes con username. Solo admin |
 | `POST /api/reports` | Crear reporte. Body: `type`, `metadata`, `description`, `lat`, `lng`, `lineName`, `busId` |
+| `POST /api/reports` (warn) | Advertir al autor por email. Body: `action:'warn'`, `reportId`, `motivo`, `deleteAfter`. Solo admin |
+| `DELETE /api/reports` | Eliminar reporte. Body: `reportId`. Solo admin |
 | `POST /api/report-votes` | Votar un reporte. Body: `reportId`, `voteType` |
 | `POST /api/support` | Crear ticket de soporte. Body: `type`, `description`. Auth requerida |
 | `GET /api/support` | Listar todos los tickets. Solo admin |
 | `PATCH /api/support` | Responder ticket y enviar email. Body: `ticketId`, `response`. Solo admin |
 | `DELETE /api/support` | Eliminar ticket. Body: `ticketId`. Solo admin |
+| `GET /api/announcements` | Anuncios activos (lectura publica, usada por el popup) |
+| `GET /api/announcements?admin=1` | Todos los anuncios (activos + inactivos). Solo admin |
+| `POST /api/announcements` | Crear anuncio. Body: `title`, `body`, `type`, `active`. Solo admin |
+| `PATCH /api/announcements` | Editar/activar anuncio. Body: `id`, campos modificables. Solo admin |
+| `DELETE /api/announcements` | Eliminar anuncio. Body: `id`. Solo admin |
 
 ---
 
@@ -417,6 +472,22 @@ GMAIL_APP_PASSWORD
 | `admin_response` | text | Respuesta del administrador |
 | `responded_at` | timestamptz | Timestamp de la respuesta |
 | `created_at` | timestamptz | Timestamp de creacion |
+
+### Tabla `announcements` — anuncios globales para todos los usuarios
+
+| Columna | Tipo | Descripcion |
+|---------|------|-------------|
+| `id` | uuid PK | Generado automaticamente |
+| `title` | text | Titulo del anuncio (max 120 chars) |
+| `body` | text | Cuerpo del mensaje (max 600 chars) |
+| `type` | text | `info`, `warning`, `danger` — colorea el ribbon del popup |
+| `active` | boolean | Si esta visible para los usuarios |
+| `created_at` | timestamptz | Timestamp de creacion |
+| `updated_at` | timestamptz | Ultima edicion |
+
+**RLS:** lectura publica solo para anuncios con `active=true`. Las escrituras se hacen siempre via `/api/announcements` con la service key (que ignora RLS). Cada usuario ve cada anuncio una sola vez — el frontend guarda los IDs vistos en `localStorage[seen_announcements]`.
+
+Script SQL para crear la tabla: `scripts/setup-announcements.sql`.
 
 ---
 

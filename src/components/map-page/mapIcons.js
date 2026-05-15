@@ -1,10 +1,11 @@
-// mapIcons.js — Son todos los iconos del mapa
+// mapIcons.js  -> Acordarse que es la libreria que estoy usando para los iconos del mapa
 import L from 'leaflet';
 import busIconImg from '../../assets/icono-parada-bus.png';
 import busInterurbanoImg from '../../assets/icono-parada-bus-interurbano.png';
 import busLocalImg from '../../assets/icono-parada-bus-local.png';
 
 // Esto es un pequeno fix para los iconos por defecto de Leaflet con Vite
+// Ver ping que tengo en el navegador *** 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',

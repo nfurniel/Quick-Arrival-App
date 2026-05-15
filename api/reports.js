@@ -1,6 +1,39 @@
+import nodemailer from 'nodemailer';
+
 const SUPABASE_URL = 'https://tumoqeuueqbvfstdhdmn.supabase.co';
 
 const VALID_TYPES = ['seats', 'punctuality', 'crowding', 'noise', 'temperature', 'driver', 'accessibility'];
+
+const TYPE_LABELS_ES = {
+  seats: 'Asientos',
+  punctuality: 'Puntualidad',
+  crowding: 'Ocupación',
+  noise: 'Ruido',
+  temperature: 'Temperatura',
+  driver: 'Conducción',
+  accessibility: 'Accesibilidad',
+};
+
+async function enviarEmailAdvertencia(toEmail, motivo, reporteResumen) {
+  if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+    console.error('[reports/warn] GMAIL_USER o GMAIL_APP_PASSWORD no configuradas');
+    return false;
+  }
+  const transporter = nodemailer.createTransport({
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false,
+    auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD },
+  });
+  await transporter.sendMail({
+    from: `"Quick Arrival — Moderación" <${process.env.GMAIL_USER}>`,
+    to: toEmail,
+    subject: 'Aviso sobre un reporte tuyo — Quick Arrival',
+    text: `Hola,\n\nHemos revisado uno de tus reportes (${reporteResumen}) y queremos avisarte de lo siguiente:\n\n${motivo}\n\nLos reportes ayudan a otros usuarios, así que te pedimos que los uses con responsabilidad. Si seguimos detectando reportes falsos podríamos restringir tu cuenta.\n\nGracias.`,
+    html: `<p>Hola,</p><p>Hemos revisado uno de tus reportes (<b>${reporteResumen}</b>) y queremos avisarte de lo siguiente:</p><blockquote style="border-left:3px solid #f59e0b;padding-left:1rem;color:#334155;margin:1rem 0">${motivo.replace(/\n/g, '<br>')}</blockquote><p>Los reportes ayudan a otros usuarios, así que te pedimos que los uses con responsabilidad. Si seguimos detectando reportes falsos podríamos restringir tu cuenta.</p><p>Gracias.</p>`,
+  });
+  return true;
+}
 
 // Para cada tipo de reporte, los valores que acepta
 const VALID_OPTIONS = {
@@ -33,11 +66,73 @@ async function verifyUser(authHeader, serviceKey) {
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
   if (req.method === 'OPTIONS') return res.status(204).end();
 
   const serviceKey = process.env.SUPABASE_SERVICE_KEY;
   if (!serviceKey) return res.status(500).json({ error: 'Configuración del servidor incompleta' });
+
+  // Listado para el panel admin: GET /api/reports?admin=1
+  if (req.method === 'GET' && req.query.admin === '1') {
+    const user = await verifyUser(req.headers.authorization, serviceKey);
+    if (!user) return res.status(401).json({ error: 'No autenticado' });
+    if (user.app_metadata?.role !== 'admin') return res.status(403).json({ error: 'No autorizado' });
+
+    try {
+      // Primero traemos los reportes
+      const r = await fetch(
+        `${SUPABASE_URL}/rest/v1/reports?select=id,user_id,type,metadata,description,line_name,created_at,status&order=created_at.desc&limit=200`,
+        { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } }
+      );
+      if (!r.ok) {
+        const body = await r.text();
+        throw new Error(`Supabase ${r.status}: ${body}`);
+      }
+      const reports = await r.json();
+
+      // Y después cogemos los usernames de los autores en una sola consulta
+      const ids = [...new Set(reports.map(rep => rep.user_id).filter(Boolean))];
+      const profilesMap = {};
+      if (ids.length > 0) {
+        const list = ids.map(id => `"${id}"`).join(',');
+        const pr = await fetch(
+          `${SUPABASE_URL}/rest/v1/profiles?select=id,username&id=in.(${list})`,
+          { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } }
+        );
+        if (pr.ok) {
+          const profiles = await pr.json();
+          for (const p of profiles) profilesMap[p.id] = p.username;
+        }
+      }
+
+      const enriched = reports.map(rep => ({
+        ...rep,
+        username: profilesMap[rep.user_id] || null,
+      }));
+      return res.status(200).json({ reports: enriched });
+    } catch (err) {
+      console.error('[api/reports admin GET] Error:', err.message);
+      return res.status(502).json({ error: 'Error cargando reportes' });
+    }
+  }
+
+  // Eliminar un reporte (solo admin)
+  if (req.method === 'DELETE') {
+    const user = await verifyUser(req.headers.authorization, serviceKey);
+    if (!user) return res.status(401).json({ error: 'No autenticado' });
+    if (user.app_metadata?.role !== 'admin') return res.status(403).json({ error: 'No autorizado' });
+
+    const { reportId } = req.body || {};
+    if (!reportId) return res.status(400).json({ error: 'Falta reportId' });
+
+    const del = await fetch(`${SUPABASE_URL}/rest/v1/reports?id=eq.${encodeURIComponent(reportId)}`, {
+      method: 'DELETE',
+      headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
+    });
+    if (!del.ok) return res.status(500).json({ error: 'Error eliminando el reporte' });
+    return res.status(200).json({ ok: true });
+  }
 
   // GET /api/reports?lineName=27&busId=1234
   if (req.method === 'GET') {
@@ -77,6 +172,58 @@ export default async function handler(req, res) {
     } catch (err) {
       return res.status(502).json({ error: err.message, reports: [] });
     }
+  }
+
+  // Cuando el admin avisa al autor de un reporte, manda email y opcionalmente borra el reporte
+  if (req.method === 'POST' && req.body?.action === 'warn') {
+    const user = await verifyUser(req.headers.authorization, serviceKey);
+    if (!user) return res.status(401).json({ error: 'No autenticado' });
+    if (user.app_metadata?.role !== 'admin') return res.status(403).json({ error: 'No autorizado' });
+
+    const { reportId, motivo, deleteAfter } = req.body || {};
+    if (!reportId) return res.status(400).json({ error: 'Falta reportId' });
+    if (!motivo || typeof motivo !== 'string' || !motivo.trim()) {
+      return res.status(400).json({ error: 'Falta el motivo de la advertencia' });
+    }
+    const cleanMotivo = stripHtml(motivo).slice(0, 500);
+
+    // Necesitamos saber quién hizo el reporte para mandarle el email
+    const rRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/reports?id=eq.${encodeURIComponent(reportId)}&select=id,user_id,type,line_name`,
+      { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } }
+    );
+    if (!rRes.ok) return res.status(500).json({ error: 'Error cargando el reporte' });
+    const reports = await rRes.json();
+    const reporte = reports[0];
+    if (!reporte) return res.status(404).json({ error: 'Reporte no encontrado' });
+
+    // Sacamos el email del autor desde auth.users
+    const userRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${reporte.user_id}`, {
+      headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
+    });
+    if (!userRes.ok) return res.status(500).json({ error: 'No se pudo obtener el email del usuario' });
+    const ticketUser = await userRes.json();
+    const email = ticketUser?.email;
+    if (!email) return res.status(400).json({ error: 'El usuario no tiene email' });
+
+    const resumen = `${TYPE_LABELS_ES[reporte.type] || reporte.type} — línea ${reporte.line_name}`;
+    try {
+      const ok = await enviarEmailAdvertencia(email, cleanMotivo, resumen);
+      if (!ok) return res.status(500).json({ error: 'Email no enviado (faltan credenciales SMTP)' });
+    } catch (err) {
+      console.error('[reports/warn] Error enviando email:', err.message);
+      return res.status(502).json({ error: 'Error enviando el email' });
+    }
+
+    // Si el admin marcó la casilla, borramos el reporte también
+    if (deleteAfter) {
+      await fetch(`${SUPABASE_URL}/rest/v1/reports?id=eq.${encodeURIComponent(reportId)}`, {
+        method: 'DELETE',
+        headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
+      });
+    }
+
+    return res.status(200).json({ ok: true, deleted: !!deleteAfter });
   }
 
   // POST /api/reports
