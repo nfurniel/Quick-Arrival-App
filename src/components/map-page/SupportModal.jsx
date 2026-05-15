@@ -1,3 +1,5 @@
+// Modal para que el usuario abra un ticket de soporte. Le llega luego un email
+// con la respuesta cuando el admin lo conteste desde /admin
 import { useState } from 'react';
 import { supabase } from '../../supabaseClient';
 import './SupportModal.css';
@@ -19,6 +21,7 @@ export default function SupportModal({ isOpen, onClose }) {
 
   if (!isOpen) return null;
 
+  // Resetea el formulario antes de cerrar para que la proxima vez salga limpio
   const handleClose = () => {
     setType('');
     setDescription('');

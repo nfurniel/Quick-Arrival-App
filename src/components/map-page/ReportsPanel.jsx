@@ -78,6 +78,8 @@ export default function ReportsPanel({ lineName, busId, isDarkMode, onBus }) {
 
   useEffect(() => { fetchReports(); }, [fetchReports]);
 
+  // Solo puede votar quien tenga "Voy en este bus" activado.
+  // Y si ya votaste lo mismo, no hacemos nada para no spamear la API
   const handleVote = async (reportId, voteType) => {
     if (!onBus) return;
     const { data: { session } } = await supabase.auth.getSession();
@@ -218,3 +220,14 @@ export default function ReportsPanel({ lineName, busId, isDarkMode, onBus }) {
     </div>
   );
 }
+
+//  ================================================
+//                 /\_/\
+//                ( o o )
+//               ==\ v /==
+//                 )   (
+//                (     )
+//               (       )
+//              ( )_ _ _( )   Me aburro nadie lo va a ver
+//  ================================================
+

@@ -73,7 +73,8 @@ export default function LiveBusLayer({ selectedBus, onStatusChange }) {
             onStatusChange?.('found');
           }
 
-          // Si hay varios buses en la misma línea, elegir el más cercano a la parada
+          // Si hay varios buses en la misma línea, elegir el más cercano a la parada.
+          // Usamos Math.hypot que es como hacer pitagoras con la diferencia de lat y lng
           let busParaRuta = ubicaciones[0];
           if (ubicaciones.length > 1 && selectedBus.stopLat && selectedBus.stopLng) {
             busParaRuta = ubicaciones.reduce((closest, loc) => {
@@ -113,6 +114,8 @@ export default function LiveBusLayer({ selectedBus, onStatusChange }) {
       } catch (e) {
         console.error("Error obteniendo ubicacion del bus:", e);
       } finally {
+        // Usamos setTimeout recursivo en vez de setInterval para que no se solape
+        // si una peticion tarda mas de 8s (el CRTM a veces se pone lento)
         if (montado) {
           timeoutId = setTimeout(pedirUbicacion, 8000);
         }

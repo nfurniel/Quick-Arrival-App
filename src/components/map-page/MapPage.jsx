@@ -19,6 +19,7 @@ import TrafficIncidentsLayer from './TrafficIncidentsLayer';
 import ReportModal from './ReportModal';
 import ReportsPanel from './ReportsPanel';
 import SupportModal from './SupportModal';
+import AnnouncementPopup from './AnnouncementPopup';
 import { TbBus, TbFlag, TbCircleCheck } from 'react-icons/tb';
 import semaforoIcon from '../../assets/icono-semaforo.png';
 
@@ -34,10 +35,9 @@ function MapController({ flyToTarget }) {
   }, [flyToTarget, map]);
   return null;
 }
-// Importar mapIcons para que se ejecute el fix de Leaflet
 import './mapIcons';
 
-// Saludo segun la hora del dia
+// Saludar dependiendo de la hora 
 function getGreeting() {
   const hour = new Date().getHours();
   if (hour >= 6 && hour < 13) return 'Buenos días';
@@ -45,7 +45,7 @@ function getGreeting() {
   return 'Buenas noches';
 }
 
-// Es de noche? (para dark mode automatico)
+// Si es de noche que ponega el darkmode , esto verlo en siguiente 
 function isNightTime() {
   const hour = new Date().getHours();
   return hour >= 21 || hour < 6;
@@ -63,11 +63,11 @@ export default function MapPage() {
   const [selectedStop, setSelectedStop] = useState(null);
   const [favourites, setFavourites] = useState([]);
   const [flyToTarget, setFlyToTarget] = useState(null);
-  const [favModal, setFavModal] = useState(null); // { stopId, stopName }
+  const [favModal, setFavModal] = useState(null);
   const [trafficVisible, setTrafficVisible] = useState(false);
   const [onBus, setOnBus] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
-  const [trackingStatus, setTrackingStatus] = useState('loading'); // 'loading' | 'found' | 'timeout'
+  const [trackingStatus, setTrackingStatus] = useState('loading');
   const [reportToast, setReportToast] = useState(false);
   const [showSupport, setShowSupport] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -82,12 +82,13 @@ export default function MapPage() {
     setTrackingStatus('loading');
   }, [selectedBus?.line, selectedBus?.codStop]);
 
-  // Limpiar el timer del toast si el componente desmonta
+  // Aqui vamos a limpiear el timer si es que el compoennte se desmonta con el ref
   useEffect(() => {
     return () => { if (toastTimerRef.current) clearTimeout(toastTimerRef.current); };
   }, []);
 
-  // Presencia: ver otros usuarios en el mapa
+  // Esto es para ver a los otros usuarios en el mapa 
+  // Poner tiempoo para no conflicto *************
   const otherUsers = usePresence(userLocation, userName, selectedAvatar);
 
   // Cargar datos del usuario (nombre y avatar guardado)
@@ -116,7 +117,7 @@ export default function MapPage() {
 
   // Toggle favorito para la parada seleccionada
   // Desktop: handleToggleFavourite(stopId, stopName)
-  // Móvil:   handleToggleFavourite(stopName) ← stopId viene de selectedStop
+  // Movil:   handleToggleFavourite(stopName) ← stopId viene de selectedStop
   const handleToggleFavourite = async (stopIdOrName, stopNameFromDesktop) => {
     let id, stopName;
     if (typeof stopIdOrName === 'number') {
@@ -159,7 +160,8 @@ export default function MapPage() {
   const handleSelectFavourite = (fav) => {
     setFlyToTarget({ lat: fav.lat, lng: fav.lng });
     if (window.innerWidth < 768) {
-      // Móvil: bottom sheet
+      // Movil: bottom sheet
+      // Ver reel carpeta de dev porfavorrr no  olvidarrrrr *********
       setSelectedStop({
         codStop: fav.codStop,
         name: fav.name,
@@ -198,7 +200,7 @@ export default function MapPage() {
     });
   };
 
-  // Obtener ubicacion del usuario al cargar
+  // Obtener la ubicacion del usuario al cargar
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -443,6 +445,9 @@ export default function MapPage() {
       )}
 
       <SupportModal isOpen={showSupport} onClose={() => setShowSupport(false)} />
+
+      {/* Popup de avisos del admin */}
+      <AnnouncementPopup isDarkMode={isDarkMode} />
 
       {/* Toast de confirmación de reporte */}
       {reportToast && (

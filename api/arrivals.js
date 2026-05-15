@@ -113,17 +113,17 @@ async function fetchEmtArrivals(stopId) {
     }
 
     return {
-      line:            a.line || '?',
+      line: a.line || '?',
       lineDescription: `Linea ${a.line}`,
-      destination:     a.destination || '',
-      minutes:         Math.round(a.estimateArrive / 60),
-      arrivalTime:     new Date(Date.now() + a.estimateArrive * 1000)
-                         .toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
-      codMode:         '6',
-      codLine:         String(a.line || ''),
-      direction:       1,
-      busId:           a.bus,
-      distanceMeters:  a.DistanceBus,
+      destination: a.destination || '',
+      minutes: Math.round(a.estimateArrive / 60),
+      arrivalTime: new Date(Date.now() + a.estimateArrive * 1000)
+        .toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+      codMode: '6',
+      codLine: String(a.line || ''),
+      direction: 1,
+      busId: a.bus,
+      distanceMeters: a.DistanceBus,
       busLocation,
     };
   });
@@ -165,15 +165,15 @@ async function fetchCrtmArrivals(codStop) {
     .map(t => {
       const arrivalTime = new Date(t.time);
       return {
-        line:            t.line?.shortDescription || '?',
+        line: t.line?.shortDescription || '?',
         lineDescription: t.line?.description || '',
-        destination:     t.destination || '',
-        minutes:         Math.max(0, Math.round((arrivalTime - now) / 60000)),
-        arrivalTime:     arrivalTime.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
-        codMode:         t.line?.codMode || '8',
-        codLine:         t.line?.codLine || '',
-        direction:       t.direction || 1,
-        codItinerary:    t.destinationStop?.codStop || '',
+        destination: t.destination || '',
+        minutes: Math.max(0, Math.round((arrivalTime - now) / 60000)),
+        arrivalTime: arrivalTime.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+        codMode: t.line?.codMode || '8',
+        codLine: t.line?.codLine || '',
+        direction: t.direction || 1,
+        codItinerary: t.destinationStop?.codStop || '',
       };
     })
     .filter(t => t.minutes >= 0)
