@@ -1,6 +1,3 @@
-// Proxy para la API de incidencias de tráfico de TomTom.
-// Oculta la API key en el servidor y usa caché global con bbox redondeado.
-
 const CACHE = new Map();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
 
