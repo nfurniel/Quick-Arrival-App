@@ -1,14 +1,14 @@
 // Servicios para obtener datos del transporte público de Madrid.
 // Las paradas se obtienen de los servidores GIS del CRTM.
-// Los tiempos de llegada se piden al backend propio (/api/arrivals).
+// Los tiempos de llegada se piden al BE (/api/arrivals).
 
 import { getEMTBusLocations } from './emtService';
 
 const ARCGIS_BASE = 'https://services5.arcgis.com/UxADft6QPcvFyDU1/arcgis/rest/services';
 const INTERURBAN_URL = `${ARCGIS_BASE}/M8_Red/FeatureServer/0/query`;
-const URBAN_URL      = `${ARCGIS_BASE}/M6_Red/FeatureServer/0/query`;
+const URBAN_URL = `${ARCGIS_BASE}/M6_Red/FeatureServer/0/query`;
 
-// Devuelve las paradas visibles en el área del mapa en ese momento
+// Devuelve las paradas visibles en el area del mapa en ese momento (bbox)
 export async function getCRTMStopsInBounds(minLng, minLat, maxLng, maxLat) {
   const params = new URLSearchParams({
     where: '1=1',
@@ -54,9 +54,9 @@ export async function getStopTimes(codStop, signal) {
     const json = await response.json();
     return {
       arrivals: json.arrivals ?? [],
-      stale:    json.stale    ?? false,
+      stale: json.stale ?? false,
       cachedAt: null,
-      error:    json.error    ?? false,
+      error: json.error ?? false,
     };
   } catch (error) {
     if (error.name === 'AbortError') throw error;
@@ -64,7 +64,8 @@ export async function getStopTimes(codStop, signal) {
   }
 }
 
-// Devuelve la posición GPS de los autobuses de una línea en tiempo real
+// Devuelve la posicion GPS de los autobuses de una línea en tiempo real
+// REVISA API ******
 export async function getBusLocation(mode, codLine, direction, codStop, maxRetries = 2, busId, codItinerary = '') {
   if (String(mode) === '6') {
     try {
@@ -99,10 +100,10 @@ export async function getBusLocation(mode, codLine, direction, codStop, maxRetri
       return vehicles
         .filter(v => !v.direction || String(v.direction) === String(direction))
         .map(v => ({
-          latitude:  v.coordinates?.latitude,
+          latitude: v.coordinates?.latitude,
           longitude: v.coordinates?.longitude,
           vehicleId: v.codVehicle,
-          lineCode:  v.line?.shortDescription || '',
+          lineCode: v.line?.shortDescription || '',
         }))
         .filter(v => v.latitude && v.longitude);
 
