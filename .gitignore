@@ -31,6 +31,3 @@ dist-ssr
 # Supabase local config
 supabase/
 
-# Claude Code
-.claude/
-.vercel
