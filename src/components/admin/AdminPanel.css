@@ -465,7 +465,7 @@
     flex-direction: column;
     gap: 0.3rem;
 
-    > span {
+    >span {
       font-size: 0.8rem;
       font-weight: 600;
       color: #475569;

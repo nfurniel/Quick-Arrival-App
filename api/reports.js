@@ -1,7 +1,9 @@
+// nodemailer como servidor SMTP 
 import nodemailer from 'nodemailer';
 
 const SUPABASE_URL = 'https://tumoqeuueqbvfstdhdmn.supabase.co';
 
+// TIpos 
 const VALID_TYPES = ['seats', 'punctuality', 'crowding', 'noise', 'temperature', 'driver', 'accessibility'];
 
 const TYPE_LABELS_ES = {
@@ -51,6 +53,7 @@ const LAT_MIN = 27.5, LAT_MAX = 44.0;
 const LNG_MIN = -18.5, LNG_MAX = 4.5;
 
 // Quitamos etiquetas HTML para evitar que alguien inyecte código en los textos
+// Ver video S4avitarrr *************
 function stripHtml(str) {
   return str.replace(/<[^>]*>/g, '').trim();
 }
@@ -91,7 +94,7 @@ export default async function handler(req, res) {
       }
       const reports = await r.json();
 
-      // Y después cogemos los usernames de los autores en una sola consulta
+      // Y después cogemos los usernames de los que lo han hecho en una sola consulta
       const ids = [...new Set(reports.map(rep => rep.user_id).filter(Boolean))];
       const profilesMap = {};
       if (ids.length > 0) {
@@ -117,7 +120,7 @@ export default async function handler(req, res) {
     }
   }
 
-  // Eliminar un reporte (solo admin)
+  // Eliminar un reporte (solo  puede hacerlo admin)
   if (req.method === 'DELETE') {
     const user = await verifyUser(req.headers.authorization, serviceKey);
     if (!user) return res.status(401).json({ error: 'No autenticado' });
@@ -238,20 +241,21 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Tipo de reporte no válido' });
     }
 
-    // Opción del tipo
+    // Opcion del tipo
     const optionValue = metadata?.value;
     if (!optionValue || !VALID_OPTIONS[type].includes(optionValue)) {
       return res.status(400).json({ error: 'Opción no válida para este tipo de reporte' });
     }
 
-    // Coordenadas — tienen que estar dentro de España
+    // Coordenadas — tienen que estar dentro de España xD
+    // REVISARRRR ****
     const latN = parseFloat(lat);
     const lngN = parseFloat(lng);
     if (isNaN(latN) || isNaN(lngN) || latN < LAT_MIN || latN > LAT_MAX || lngN < LNG_MIN || lngN > LNG_MAX) {
       return res.status(400).json({ error: 'Coordenadas fuera del rango válido' });
     }
 
-    // Nombre de línea
+    // Nombre de linea
     if (!lineName || typeof lineName !== 'string' || lineName.trim().length === 0 || lineName.length > 20) {
       return res.status(400).json({ error: 'Nombre de línea inválido' });
     }
@@ -286,7 +290,8 @@ export default async function handler(req, res) {
     }
 
     try {
-      // Construimos el objeto metadata: siempre lleva el valor, y el busId solo si existe
+      // Construimos el objeto metadata: siempre lleva el valor, y el busId solo si existe 
+      // Seguir el curso miduddev ***************
       const metadataToSave = { value: optionValue };
       if (cleanBusId) {
         metadataToSave.busId = cleanBusId;

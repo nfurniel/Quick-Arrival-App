@@ -12,10 +12,10 @@ const REPORT_TYPES = [
     Icon: TbArmchair,
     label: 'Asientos libres',
     options: [
-      { value: 'many',  label: 'Muchos', desc: 'El bus está casi vacío' },
-      { value: 'some',  label: 'Algunos', desc: 'Hay donde sentarse' },
-      { value: 'few',   label: 'Pocos', desc: 'Queda alguno suelto' },
-      { value: 'none',  label: 'Ninguno', desc: 'Todo ocupado' },
+      { value: 'many', label: 'Muchos', desc: 'El bus está casi vacío' },
+      { value: 'some', label: 'Algunos', desc: 'Hay donde sentarse' },
+      { value: 'few', label: 'Pocos', desc: 'Queda alguno suelto' },
+      { value: 'none', label: 'Ninguno', desc: 'Todo ocupado' },
     ],
   },
   {
@@ -23,10 +23,10 @@ const REPORT_TYPES = [
     Icon: TbClock,
     label: 'Puntualidad',
     options: [
-      { value: 'early',         label: 'Adelantado',  desc: 'Llegó antes de tiempo' },
-      { value: 'on_time',       label: 'A tiempo',    desc: 'Coincide con el horario' },
-      { value: 'slightly_late', label: 'Algo tarde',  desc: '5–10 min de retraso' },
-      { value: 'very_late',     label: 'Muy tarde',   desc: 'Más de 10 min de retraso' },
+      { value: 'early', label: 'Adelantado', desc: 'Llegó antes de tiempo' },
+      { value: 'on_time', label: 'A tiempo', desc: 'Coincide con el horario' },
+      { value: 'slightly_late', label: 'Algo tarde', desc: '5–10 min de retraso' },
+      { value: 'very_late', label: 'Muy tarde', desc: 'Más de 10 min de retraso' },
     ],
   },
   {
@@ -34,10 +34,10 @@ const REPORT_TYPES = [
     Icon: TbUsers,
     label: 'Ocupación',
     options: [
-      { value: 'empty',       label: 'Vacío',       desc: 'Poca gente' },
-      { value: 'normal',      label: 'Normal',      desc: 'Aforo razonable' },
-      { value: 'full',        label: 'Lleno',       desc: 'Casi sin espacio' },
-      { value: 'overcrowded', label: 'Abarrotado',  desc: 'Imposible moverse' },
+      { value: 'empty', label: 'Vacío', desc: 'Poca gente' },
+      { value: 'normal', label: 'Normal', desc: 'Aforo razonable' },
+      { value: 'full', label: 'Lleno', desc: 'Casi sin espacio' },
+      { value: 'overcrowded', label: 'Abarrotado', desc: 'Imposible moverse' },
     ],
   },
   {
@@ -45,9 +45,9 @@ const REPORT_TYPES = [
     Icon: TbVolume,
     label: 'Ruido',
     options: [
-      { value: 'quiet',  label: 'Silencioso', desc: 'Ambiente tranquilo' },
-      { value: 'normal', label: 'Normal',     desc: 'Ruido habitual' },
-      { value: 'noisy',  label: 'Ruidoso',    desc: 'Mucho ruido o música' },
+      { value: 'quiet', label: 'Silencioso', desc: 'Ambiente tranquilo' },
+      { value: 'normal', label: 'Normal', desc: 'Ruido habitual' },
+      { value: 'noisy', label: 'Ruidoso', desc: 'Mucho ruido o música' },
     ],
   },
   {
@@ -55,9 +55,9 @@ const REPORT_TYPES = [
     Icon: TbTemperature,
     label: 'Temperatura',
     options: [
-      { value: 'cold', label: 'Frío',       desc: 'Demasiado aire acondicionado' },
-      { value: 'ok',   label: 'Agradable',  desc: 'Temperatura correcta' },
-      { value: 'hot',  label: 'Calor',      desc: 'Hace mucho calor' },
+      { value: 'cold', label: 'Frío', desc: 'Demasiado aire acondicionado' },
+      { value: 'ok', label: 'Agradable', desc: 'Temperatura correcta' },
+      { value: 'hot', label: 'Calor', desc: 'Hace mucho calor' },
     ],
   },
   {
@@ -65,9 +65,9 @@ const REPORT_TYPES = [
     Icon: TbSteeringWheel,
     label: 'Conducción',
     options: [
-      { value: 'great',  label: 'Suave',   desc: 'Conducción tranquila' },
-      { value: 'normal', label: 'Normal',  desc: 'Sin incidencias' },
-      { value: 'bad',    label: 'Brusca',  desc: 'Frenadas o acelerones bruscos' },
+      { value: 'great', label: 'Suave', desc: 'Conducción tranquila' },
+      { value: 'normal', label: 'Normal', desc: 'Sin incidencias' },
+      { value: 'bad', label: 'Brusca', desc: 'Frenadas o acelerones bruscos' },
     ],
   },
   {
@@ -75,7 +75,7 @@ const REPORT_TYPES = [
     Icon: TbWheelchair,
     label: 'Accesibilidad',
     options: [
-      { value: 'ramp_ok',     label: 'Rampa OK',   desc: 'Rampa de acceso funciona' },
+      { value: 'ramp_ok', label: 'Rampa OK', desc: 'Rampa de acceso funciona' },
       { value: 'ramp_broken', label: 'Rampa rota', desc: 'La rampa no funciona' },
     ],
   },

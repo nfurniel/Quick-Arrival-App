@@ -5,11 +5,11 @@ import { supabase } from '../../supabaseClient';
 import './SupportModal.css';
 
 const TIPOS = [
-  { value: 'bug',       label: 'Error en la app' },
-  { value: 'datos',     label: 'Datos incorrectos (parada, línea...)' },
-  { value: 'sugerencia',label: 'Sugerencia de mejora' },
-  { value: 'cuenta',    label: 'Problema con mi cuenta' },
-  { value: 'otro',      label: 'Otro' },
+  { value: 'bug', label: 'Error en la app' },
+  { value: 'datos', label: 'Datos incorrectos (parada, línea...)' },
+  { value: 'sugerencia', label: 'Sugerencia de mejora' },
+  { value: 'cuenta', label: 'Problema con mi cuenta' },
+  { value: 'otro', label: 'Otro' },
 ];
 
 export default function SupportModal({ isOpen, onClose }) {

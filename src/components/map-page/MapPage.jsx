@@ -220,7 +220,7 @@ export default function MapPage() {
     }
   }, []);
 
-  // Pantalla de carga mientras buscamos la ubicacion
+  // Loader mientras ubicacion
   if (loadingLocation) {
     return (
       <div className="map-loading-screen">
@@ -236,6 +236,7 @@ export default function MapPage() {
   const tileUrl = isDarkMode ? darkTileUrl : lightTileUrl;
 
   // URLs de los tiles de etiquetas (nombres de ciudades/pueblos, encima de todo)
+  // revisar no va del todo bien pero es funcioanl* *****
   const lightLabelsUrl = "https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png";
   const darkLabelsUrl = "https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png";
   const labelsUrl = isDarkMode ? darkLabelsUrl : lightLabelsUrl;
@@ -326,7 +327,7 @@ export default function MapPage() {
         />
       </MapContainer>
 
-      {/* Botón toggle tráfico */}
+      {/* Boton toggle tráfico */}
       <button
         className={`traffic-toggle-btn ${trafficVisible ? 'active' : ''} ${isDarkMode ? 'dark' : ''}`}
         onClick={() => setTrafficVisible(v => !v)}

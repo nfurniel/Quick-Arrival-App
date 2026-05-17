@@ -1,6 +1,7 @@
 // Endpoint que devuelve los tiempos de llegada de una parada.
 // Guarda los resultados en caché para que varios usuarios que consulten
-// la misma parada no generen peticiones repetidas a EMT/CRTM.
+// la misma parada no generen peticiones repetidas a EMT/CRTM 
+// Esto tengo que revisarlo tiene bug en prod*****
 
 // Usamos un Map para guardar los datos en memoria del servidor
 // La clave es el codStop y el valor son { data, timestamp }
@@ -12,17 +13,18 @@ const CACHE_TTL = {
 };
 const DEFAULT_TTL = 25 * 1000;
 
-// Guardamos el token de EMT entre peticiones para no pedir uno nuevo cada vez
+// Guardamos el token de EMt entre peticiones para no pedir uno nuevo cada vez
 let emtToken = null;
 let emtTokenExpiry = null;
 
 async function getEmtToken() {
-  // Si ya tenemos un token válido (con 1 minuto de margen), lo reutilizamos
+  // Si ya tenemos un token valido (con 1 minuto de margen), lo reutilizamos
   if (emtToken && emtTokenExpiry && Date.now() < emtTokenExpiry - 60000) {
     return emtToken;
   }
 
-  // Intentamos primero con v2, si falla probamos v1
+  // Intentamos primero con v2, si falla probamos v1 
+  //  *** V2 funciona mejor cambiar 
   const urls = [
     'https://openapi.emtmadrid.es/v2/mobilitylabs/user/login/',
     'https://openapi.emtmadrid.es/v1/mobilitylabs/user/login/',
@@ -55,7 +57,7 @@ async function getEmtToken() {
         return emtToken;
       }
     } catch {
-      // esta URL falló, probamos la siguiente
+      // esta URL falló, se prueba la siguiente
     }
   }
 
@@ -132,7 +134,8 @@ async function fetchEmtArrivals(stopId) {
 }
 
 async function fetchCrtmArrivals(codStop) {
-  // Simulamos que la petición viene de la web del CRTM porque su API bloquea las externas
+  // Simulamos que la petición viene de la web del CRTM porque su API bloquea las externas 
+  // Recordar video de Moure :: IMPORTANTE ********
   const r = await fetch(
     `https://www.crtm.es/widgets/api/GetStopsTimes.php?codStop=${codStop}&type=0&orderBy=2&stopTimesByIti=${codStop}&_=${Date.now()}`,
     {
@@ -151,7 +154,7 @@ async function fetchCrtmArrivals(codStop) {
   const timesData = json?.stopTimes?.times?.Time;
   if (!timesData) return [];
 
-  // A veces la API devuelve un objeto suelto en vez de un array, lo normalizamos
+  // A veces la API devuelve un objeto suelto en vez de un array
   let timesArray;
   if (Array.isArray(timesData)) {
     timesArray = timesData;
@@ -198,7 +201,7 @@ export default async function handler(req, res) {
 
   const cached = arrivalsCache.get(codStop);
 
-  // Si los datos en caché siguen siendo recientes, los devolvemos sin llamar a la API
+  // Si los datos en cache siguen siendo recientes, los devolvemos sin llamar a la API
   if (cached && Date.now() - cached.timestamp < ttl) {
     const age = Math.round((Date.now() - cached.timestamp) / 1000);
     return res.status(200).json({ arrivals: cached.data, cached: true, age, error: false });
@@ -212,7 +215,7 @@ export default async function handler(req, res) {
       arrivals = await fetchCrtmArrivals(codStop);
     }
 
-    // Guardamos en caché para las próximas peticiones
+    // Guardamos en cache para las siguientes peticiones
     arrivalsCache.set(codStop, { data: arrivals, timestamp: Date.now() });
     return res.status(200).json({ arrivals, cached: false, age: 0, error: false });
 

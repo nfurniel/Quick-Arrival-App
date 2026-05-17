@@ -1,7 +1,7 @@
 // Proxy para las peticiones a la API de EMT Madrid en produccion (Vercel Edge Function)
 // Necesario porque las peticiones directas a openapi.emtmadrid.es fallan por CORS
 // Las credenciales de login se inyectan desde variables de entorno del servidor
-// para evitar que los navegadores las pierdan al reenviar headers no estándar.
+// para evitar que los navegadores las pierdan al reenviar headers que no son estandar.
 
 export const config = {
   runtime: 'edge',
