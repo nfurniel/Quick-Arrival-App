@@ -1,12 +1,12 @@
 const CACHE = new Map();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
 
-// Redondeamos las coordenadas a celdas de ~2km para reutilizar la caché
+// Redondeamos las coordenadas a celdas de 2km para reutilizar la cache
 // aunque el usuario haya movido el mapa un poco
 const GRID = 0.02;
 
-// Redondea el bbox a la celda de cuadrícula más cercana
-// así dos usuarios mirando zonas casi iguales comparten la misma petición
+// Redondea el bbox a la celda de cuadricula más cercana
+// asi dos usuarios mirando zonas casi iguales comparten la misma petición
 function snapBbox(minLon, minLat, maxLon, maxLat) {
   return {
     minLon: (Math.floor(parseFloat(minLon) / GRID) * GRID).toFixed(3),

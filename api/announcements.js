@@ -28,7 +28,7 @@ export default async function handler(req, res) {
 
   const token = req.headers.authorization?.replace('Bearer ', '');
 
-  // Si viene ?admin=1 devolvemos todos, si no solo los activos
+  // Si viene ?admin=1 devolvemos todos, sii no solo los activos
   if (req.method === 'GET') {
     const isAdminMode = req.query.admin === '1';
     let filter = 'order=created_at.desc';

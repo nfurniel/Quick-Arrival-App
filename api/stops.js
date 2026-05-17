@@ -1,5 +1,4 @@
-// api/stops.js — Devuelve las paradas dentro del viewport del mapa
-// Sustituye la llamada directa a Supabase desde el frontend (stopsService.js)
+// api/stops.js —Devuelve las paradas dentro del viewport del mapa (esto es lo del video del bbox)
 
 export const config = { runtime: 'edge' };
 
@@ -38,7 +37,7 @@ export default async function handler(request) {
     });
 
     if (!response.ok) {
-      console.error('[api/stops] Error Supabase:', response.status);
+      console.error('[api/stops] Error Supabase:', response.status); // debugging ** acordase de borrar 88
       return new Response(JSON.stringify({ error: 'Error consultando la base de datos' }), {
         status: 502,
         headers: { 'Content-Type': 'application/json' },
@@ -52,7 +51,7 @@ export default async function handler(request) {
       headers: {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
-        'Cache-Control': 'public, max-age=60', // caché compartida 60 segundos
+        'Cache-Control': 'public, max-age=60', // cache compartida 60 segundos
       },
     });
 

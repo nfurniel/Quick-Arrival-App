@@ -1,6 +1,6 @@
 // Proxy para las peticiones al CRTM en produccion (Vercel Edge Function)
 // Necesario porque el CRTM bloquea peticiones que no vienen de su propia web
-// Este proxy "disfraza" nuestras peticiones para que parezcan de crtm.es
+// Este proxy va a "disfrazar" nuestras peticiones para que parezcan de crtm.es basicamente
 
 export const config = {
   runtime: 'edge',
@@ -22,7 +22,7 @@ export default async function handler(request) {
       const qs = otherParams.toString();
       targetUrl = 'https://www.crtm.es/' + path + (qs ? '?' + qs : '');
     } else {
-      // Fallback: intentar extraer del path directo
+      // Crear un Fallback para  intentar extraer del path directo
       const apiIndex = request.url.indexOf('/api/crtm/');
       if (apiIndex !== -1) {
         targetUrl = 'https://www.crtm.es/' + request.url.substring(apiIndex + 10);
@@ -41,7 +41,7 @@ export default async function handler(request) {
 
     console.log('[Proxy CRTM] Target URL:', targetUrl);
 
-    // Timeout de 18s — CRTM es muy lento, pero Vercel Edge permite hasta 25s
+    // Timeout de 18s porque CRTM es muy lento, pero Vercel Edge permite hasta 25s
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 18000);
 
@@ -59,7 +59,7 @@ export default async function handler(request) {
 
     console.log('[Proxy CRTM] Response status:', crtmResponse.status);
 
-    // Leer el body como texto para evitar problemas con Content-Encoding
+    // Leer el body como texto
     const body = await crtmResponse.text();
 
     // Devolver la respuesta con los headers CORS para que el navegador no la bloquee
@@ -73,7 +73,7 @@ export default async function handler(request) {
 
   } catch (error) {
     console.error('[Proxy CRTM] Error:', error.message);
-    // Devolver 504 si es timeout para que el frontend lo distinga de un error real
+    // Devolver 504 si es timeout para que el frontend lo distinga de un error real y poder validar mejor basicamnete
     const isTimeout = error.name === 'AbortError';
     return new Response(JSON.stringify({
       error: isTimeout ? 'Timeout del proxy CRTM' : 'Error en el proxy',

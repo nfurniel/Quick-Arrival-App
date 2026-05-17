@@ -24,7 +24,7 @@ export default async function handler(req, res) {
 
   const { reportId, voteType } = req.body || {};
 
-  // reportId debe ser entero positivo (no dejamos pasar strings ni decimales)
+  // reportId debe ser  un entero positivo (no dejamos pasar strings ni decimales)
   const reportIdN = parseInt(reportId, 10);
   if (!reportId || isNaN(reportIdN) || reportIdN <= 0 || String(reportIdN) !== String(reportId)) {
     return res.status(400).json({ error: 'reportId inválido' });
@@ -45,8 +45,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Upsert: si ya existe un voto de este usuario para este reporte, lo sobreescribe
-    // así se puede cambiar de 👍 a 👎 sin duplicar filas
+    // Aqui hacemos un Upsert,  si ya existe un voto de este usuario para este reporte, lo sobreescribe
+    // sino duplicamos las filas basicamente
     const r = await fetch(`${SUPABASE_URL}/rest/v1/report_votes`, {
       method: 'POST',
       headers: {

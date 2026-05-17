@@ -5,9 +5,9 @@ import './AnnouncementPopup.css';
 const STORAGE_KEY = 'seen_announcements';
 
 const TYPE_META = {
-  info:    { label: 'Aviso',           Icon: TbInfoCircle },
+  info: { label: 'Aviso', Icon: TbInfoCircle },
   warning: { label: 'Aviso importante', Icon: TbAlertTriangle },
-  danger:  { label: 'Aviso urgente',    Icon: TbAlertOctagon },
+  danger: { label: 'Aviso urgente', Icon: TbAlertOctagon },
 };
 
 function loadSeen() {
