@@ -13,7 +13,7 @@ function App() {
   const recoveryMode = useRef(isPasswordRecovery);
 
   useEffect(() => {
-    // Si el usuario recargó la página durante un reset pendiente, restauramos el modal
+    // Si el usuario recargo la página durante un reset pendiente, restauramos el modal
     if (sessionStorage.getItem('pendingPasswordReset')) {
       recoveryMode.current = true;
       setShowResetPassword(true);

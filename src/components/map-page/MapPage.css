@@ -37,8 +37,13 @@
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* --- BOTON QUITAR RESALTO --- */
@@ -203,8 +208,13 @@
   justify-content: center;
   transition: background 0.2s, transform 0.15s;
 
-  &:hover { transform: scale(1.05); }
-  &:active { transform: scale(0.95); }
+  &:hover {
+    transform: scale(1.05);
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
 
   .traffic-toggle-icon {
     width: 28px;
@@ -220,6 +230,7 @@
 
   &.dark {
     background: rgba(40, 40, 40, 0.92);
+
     &.active {
       background: rgba(40, 40, 40, 0.92);
       border: 2px solid #3b82f6;
@@ -270,9 +281,17 @@
 }
 
 @keyframes fav-pulse {
-  0%   { box-shadow: 0 0 0 0   rgba(251, 32, 73, 0.6); }
-  70%  { box-shadow: 0 0 0 12px rgba(251, 32, 73, 0); }
-  100% { box-shadow: 0 0 0 0   rgba(251, 32, 73, 0); }
+  0% {
+    box-shadow: 0 0 0 0 rgba(251, 32, 73, 0.6);
+  }
+
+  70% {
+    box-shadow: 0 0 0 12px rgba(251, 32, 73, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(251, 32, 73, 0);
+  }
 }
 
 /* --- BOTON BUSCAR BUS --- */
@@ -318,9 +337,17 @@
 }
 
 @keyframes tracking-pulse {
-  0% { box-shadow: 0 0 0 0 rgba(251, 32, 73, 0.6); }
-  70% { box-shadow: 0 0 0 14px rgba(251, 32, 73, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(251, 32, 73, 0); }
+  0% {
+    box-shadow: 0 0 0 0 rgba(251, 32, 73, 0.6);
+  }
+
+  70% {
+    box-shadow: 0 0 0 14px rgba(251, 32, 73, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(251, 32, 73, 0);
+  }
 }
 
 /* --- PARADAS DE BUS --- */
@@ -371,8 +398,13 @@
   flex-shrink: 0;
   transition: color 0.2s, transform 0.15s;
 
-  &.active { color: #fb2049; }
-  &:hover { transform: scale(1.2); }
+  &.active {
+    color: #fb2049;
+  }
+
+  &:hover {
+    transform: scale(1.2);
+  }
 }
 
 
@@ -594,9 +626,17 @@
 }
 
 @keyframes pulse-ring {
-  0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
-  70% { box-shadow: 0 0 0 15px rgba(59, 130, 246, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+  0% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+  }
+
+  70% {
+    box-shadow: 0 0 0 15px rgba(59, 130, 246, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+  }
 }
 
 /* --- PANEL FLOTANTE INFERIOR --- */
@@ -622,9 +662,18 @@
     bottom: 16px;
     overflow-y: auto;
 
-    &::-webkit-scrollbar       { width: 4px; }
-    &::-webkit-scrollbar-track { background: transparent; }
-    &::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 2px; }
+    &::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    &::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.15);
+      border-radius: 2px;
+    }
   }
 
   &.dark-panel {
@@ -651,6 +700,7 @@
     transform: translate(-50%, 20px);
     opacity: 0;
   }
+
   to {
     transform: translate(-50%, 0);
     opacity: 1;
@@ -774,7 +824,9 @@
   justify-content: center;
   gap: 6px;
 
-  &:hover { opacity: 0.88; }
+  &:hover {
+    opacity: 0.88;
+  }
 }
 
 /* Dark mode para los nuevos botones */
@@ -818,6 +870,13 @@
 }
 
 @keyframes toast-in {
-  from { transform: translateX(-50%) translateY(12px); opacity: 0; }
-  to   { transform: translateX(-50%) translateY(0);    opacity: 1; }
+  from {
+    transform: translateX(-50%) translateY(12px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
 }

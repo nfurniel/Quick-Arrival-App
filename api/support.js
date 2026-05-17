@@ -43,7 +43,7 @@ export default async function handler(req, res) {
   const user = await getUser(token);
   if (!user?.id) return res.status(401).json({ error: 'Token inválido' });
 
-  // POST — crear ticket de soporte
+  // POST crear ticket de soporte
   if (req.method === 'POST') {
     const { type, description } = req.body || {};
     if (!type) return res.status(400).json({ error: 'Falta el tipo' });
@@ -64,7 +64,7 @@ export default async function handler(req, res) {
     return res.status(201).json({ ok: true });
   }
 
-  // GET — listar tickets (solo admin)
+  // GET listar tickets (solo admin)
   if (req.method === 'GET') {
     if (user.app_metadata?.role !== 'admin') return res.status(403).json({ error: 'No autorizado' });
 
@@ -75,7 +75,7 @@ export default async function handler(req, res) {
     return res.status(200).json({ tickets: Array.isArray(tickets) ? tickets : [] });
   }
 
-  // PATCH — responder ticket (solo admin)
+  // PATCH —responder ticket (solo admin)
   if (req.method === 'PATCH') {
     if (user.app_metadata?.role !== 'admin') return res.status(403).json({ error: 'No autorizado' });
 

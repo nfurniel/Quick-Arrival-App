@@ -1,5 +1,4 @@
-// api/lines.js — Devuelve todas las líneas únicas disponibles en la base de datos
-// Sustituye la llamada directa a Supabase desde el frontend (stopsService.js)
+// api/lines.js  Devuelve todas las lineas unicas disponibles en la base de datos
 
 export const config = { runtime: 'edge' };
 
@@ -35,7 +34,7 @@ export default async function handler(request) {
 
     const data = await response.json();
 
-    // Extraer líneas únicas y ordenarlas (igual que hacía el frontend)
+    // Extraer lineas unicas y ordenarlas
     const linesSet = new Set();
     data.forEach(stop => {
       if (stop.lines) {
@@ -50,10 +49,10 @@ export default async function handler(request) {
     const lines = [...linesSet].sort((a, b) => {
       const numA = parseInt(a);
       const numB = parseInt(b);
-      if (!isNaN(numA) && !isNaN(numB)) return numA - numB; // las dos son números
-      if (!isNaN(numA)) return -1; // a es número, va antes
-      if (!isNaN(numB)) return 1;  // b es número, va antes
-      return a.localeCompare(b);   // las dos son letras, orden alfabético
+      if (!isNaN(numA) && !isNaN(numB)) return numA - numB; // las dos son numeross
+      if (!isNaN(numA)) return -1; // a es numero, va antes
+      if (!isNaN(numB)) return 1;  // b es numero, va antes
+      return a.localeCompare(b);   // las dos son letras, orden alfabetico
     });
 
     return new Response(JSON.stringify(lines), {
@@ -61,7 +60,7 @@ export default async function handler(request) {
       headers: {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
-        'Cache-Control': 'public, max-age=3600', // caché 1 hora — las líneas cambian poco
+        'Cache-Control': 'public, max-age=3600', // cache  de 1 hora  las líneas cambian poco
       },
     });
 
