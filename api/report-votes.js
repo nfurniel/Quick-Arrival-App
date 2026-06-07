@@ -47,7 +47,8 @@ export default async function handler(req, res) {
   try {
     // Aqui hacemos un Upsert,  si ya existe un voto de este usuario para este reporte, lo sobreescribe
     // sino duplicamos las filas basicamente
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/report_votes`, {
+    // on_conflict=report_id,user_id obligatorio para que PostgREST sepa qué constraint usar
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/report_votes?on_conflict=report_id,user_id`, {
       method: 'POST',
       headers: {
         apikey: serviceKey,
