@@ -141,6 +141,7 @@ export default function ReportsPanel({ lineName, busId, isDarkMode, onBus }) {
                 const { Icon } = meta;
                 const isOpen = expanded === type;
                 const totalVotesUp = reps.reduce((s, r) => s + (r.votes?.up || 0), 0);
+                const totalVotesDown = reps.reduce((s, r) => s + (r.votes?.down || 0), 0);
 
                 return (
                   <div key={type} className="report-group">
@@ -163,6 +164,11 @@ export default function ReportsPanel({ lineName, busId, isDarkMode, onBus }) {
                         {totalVotesUp > 0 && (
                           <span className="report-group-upvotes">
                             <TbThumbUp size={12} /> {totalVotesUp}
+                          </span>
+                        )}
+                        {totalVotesDown > 0 && (
+                          <span className="report-group-downvotes">
+                            <TbThumbDown size={12} /> {totalVotesDown}
                           </span>
                         )}
                         {isOpen ? <TbChevronUp size={16} /> : <TbChevronDown size={16} />}

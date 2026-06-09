@@ -48,6 +48,10 @@
       color: #81c784;
     }
 
+    & .report-group-downvotes {
+      color: #ef9a9a;
+    }
+
     & .report-group-right {
       color: #888;
     }
@@ -239,6 +243,15 @@
   font-size: 0.75rem;
   font-weight: 700;
   color: #4caf50;
+}
+
+.report-group-downvotes {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #e53935;
 }
 
 /* Reportes individuales que son los que estan expandidos */
