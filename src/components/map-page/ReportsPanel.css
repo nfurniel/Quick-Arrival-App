@@ -342,7 +342,16 @@
     cursor: not-allowed;
   }
 
-  &:hover:not(:disabled):not(.active):not(.locked) {
+  &.voted:not(.active) {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  &.voted.active {
+    cursor: default;
+  }
+
+  &:hover:not(:disabled):not(.active):not(.locked):not(.voted) {
     background: #f5f5f5;
   }
 }

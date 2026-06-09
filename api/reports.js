@@ -155,6 +155,9 @@ export default async function handler(req, res) {
     let params = `select=id,type,metadata,description,line_name,created_at,report_votes(vote_type,user_id)&status=eq.active&line_name=eq.${encodeURIComponent(lineName)}&created_at=gte.${since}&order=created_at.desc&limit=20`;
     if (busId) params += `&metadata->>busId=eq.${encodeURIComponent(busId)}`;
 
+    // Si viene token, identificamos al usuario para saber qué reportes ya votó
+    const currentUser = await verifyUser(req.headers.authorization, serviceKey);
+
     try {
       const r = await fetch(`${SUPABASE_URL}/rest/v1/reports?${params}`, {
         headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
@@ -162,14 +165,20 @@ export default async function handler(req, res) {
       if (!r.ok) throw new Error(`Supabase ${r.status}`);
       const raw = await r.json();
 
-      // Transformamos los datos: contamos votos y los separamos del reporte
-      const reports = raw.map(({ report_votes, ...report }) => ({
-        ...report,
-        votes: {
-          up: (report_votes || []).filter(v => v.vote_type === 'up').length,
-          down: (report_votes || []).filter(v => v.vote_type === 'down').length,
-        },
-      }));
+      // Transformamos los datos: contamos votos y separamos el voto del usuario actual
+      const reports = raw.map(({ report_votes, ...report }) => {
+        const votesArr = report_votes || [];
+        return {
+          ...report,
+          votes: {
+            up: votesArr.filter(v => v.vote_type === 'up').length,
+            down: votesArr.filter(v => v.vote_type === 'down').length,
+          },
+          userVote: currentUser
+            ? votesArr.find(v => v.user_id === currentUser.id)?.vote_type || null
+            : null,
+        };
+      });
 
       return res.status(200).json({ reports });
     } catch (err) {

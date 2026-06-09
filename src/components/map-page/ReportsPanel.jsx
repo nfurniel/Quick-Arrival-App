@@ -65,12 +65,28 @@ export default function ReportsPanel({ lineName, busId, isDarkMode, onBus }) {
     try {
       let url = `/api/reports?lineName=${encodeURIComponent(lineName)}`;
       if (busId) url += `&busId=${encodeURIComponent(busId)}`;
-      const r = await fetch(url);
+
+      // Mandamos el token para que el backend nos devuelva nuestro voto en cada reporte
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers = session
+        ? { Authorization: `Bearer ${session.access_token}` }
+        : {};
+
+      const r = await fetch(url, { headers });
       if (!r.ok) throw new Error();
       const { reports } = await r.json();
-      setReports(reports || []);
+      const list = reports || [];
+      setReports(list);
+
+      // Inicializamos los votos del usuario actual para que los botones queden bloqueados al recargar
+      const initialVotes = {};
+      for (const rep of list) {
+        if (rep.userVote) initialVotes[rep.id] = rep.userVote;
+      }
+      setUserVotes(initialVotes);
     } catch {
       setReports([]);
+      setUserVotes({});
     } finally {
       setLoading(false);
     }
@@ -180,7 +196,14 @@ export default function ReportsPanel({ lineName, busId, isDarkMode, onBus }) {
                       <div className="report-group-detail">
                         {reps.map(rep => {
                           const myVote = userVotes[rep.id];
+                          const hasVoted = !!myVote;
                           const isVoting = voting === rep.id;
+                          const titleUp = !onBus
+                            ? 'Activa "Voy en este bus" para votar'
+                            : hasVoted ? 'Ya has votado este reporte' : 'Confirmo';
+                          const titleDown = !onBus
+                            ? 'Activa "Voy en este bus" para votar'
+                            : hasVoted ? 'Ya has votado este reporte' : 'No aplica';
                           return (
                             <div key={rep.id} className="report-detail-card">
                               <div className="report-detail-top">
@@ -192,24 +215,27 @@ export default function ReportsPanel({ lineName, busId, isDarkMode, onBus }) {
                               }
                               <div className="report-detail-votes">
                                 <button
-                                  className={`vote-btn up ${myVote === 'up' ? 'active' : ''} ${!onBus ? 'locked' : ''}`}
+                                  className={`vote-btn up ${myVote === 'up' ? 'active' : ''} ${!onBus ? 'locked' : ''} ${hasVoted ? 'voted' : ''}`}
                                   onClick={() => handleVote(rep.id, 'up')}
-                                  disabled={isVoting || !onBus}
-                                  title={onBus ? 'Confirmo' : 'Activa "Voy en este bus" para votar'}
+                                  disabled={isVoting || !onBus || hasVoted}
+                                  title={titleUp}
                                 >
                                   <TbThumbUp size={12} /> {rep.votes.up}
                                 </button>
                                 <button
-                                  className={`vote-btn down ${myVote === 'down' ? 'active' : ''} ${!onBus ? 'locked' : ''}`}
+                                  className={`vote-btn down ${myVote === 'down' ? 'active' : ''} ${!onBus ? 'locked' : ''} ${hasVoted ? 'voted' : ''}`}
                                   onClick={() => handleVote(rep.id, 'down')}
-                                  disabled={isVoting || !onBus}
-                                  title={onBus ? 'No aplica' : 'Activa "Voy en este bus" para votar'}
+                                  disabled={isVoting || !onBus || hasVoted}
+                                  title={titleDown}
                                 >
                                   <TbThumbDown size={12} /> {rep.votes.down}
                                 </button>
                               </div>
                               {!onBus && (
                                 <p className="vote-locked-hint">Activa "Voy en este bus" para votar</p>
+                              )}
+                              {onBus && hasVoted && (
+                                <p className="vote-locked-hint">Ya has votado este reporte</p>
                               )}
                             </div>
                           );
