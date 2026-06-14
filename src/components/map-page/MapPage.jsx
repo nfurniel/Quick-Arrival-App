@@ -202,22 +202,36 @@ export default function MapPage() {
 
   // Obtener la ubicacion del usuario al cargar
   useEffect(() => {
+    const MADRID = [40.4168, -3.7038]; // centro por defecto si no hay GPS
+    let resuelto = false;
+    const terminar = (loc) => {
+      if (resuelto) return;
+      resuelto = true;
+      setUserLocation(loc);
+      setLoadingLocation(false);
+    };
+
+    // Red de seguridad: si en 9s no hay respuesta (permiso ignorado o GPS
+    // colgado), cargamos el mapa igualmente en Madrid en vez de quedarnos en
+    // el spinner para siempre (era lo que obligaba a recargar en móvil).
+    const fallback = setTimeout(() => terminar(MADRID), 9000);
+
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setUserLocation([pos.coords.latitude, pos.coords.longitude]);
-          setLoadingLocation(false);
-        },
+        (pos) => terminar([pos.coords.latitude, pos.coords.longitude]),
         (error) => {
-          console.error("Error obteniendo ubicacion:", error);
-          setUserLocation([40.4168, -3.7038]);
-          setLoadingLocation(false);
-        }
+          console.error('Error obteniendo ubicacion:', error);
+          terminar(MADRID);
+        },
+        // timeout: que falle en 8s en vez de colgarse; maximumAge: acepta una
+        // posición reciente cacheada (carga instantánea al volver a entrar)
+        { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }
       );
     } else {
-      setUserLocation([40.4168, -3.7038]);
-      setLoadingLocation(false);
+      terminar(MADRID);
     }
+
+    return () => clearTimeout(fallback);
   }, []);
 
   // Loader mientras ubicacion
