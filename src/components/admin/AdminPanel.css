@@ -426,6 +426,45 @@
   }
 }
 
+/* Contenedor de los botones de la cabecera (calendario + nuevo anuncio) */
+.admin-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* Botón secundario (borde azul) — "Comprobar calendario EMT" */
+.admin-action-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  background: #fff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+
+  & svg {
+    flex-shrink: 0;
+  }
+
+  &:hover {
+    background: #eff6ff;
+    border-color: #3b82f6;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
 .admin-badge-info {
   background: #dbeafe;
   color: #1d4ed8;
@@ -663,8 +702,15 @@
     padding: 0.85rem;
   }
 
+  .admin-header-actions {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
   .admin-section-header {
-    .admin-action-primary {
+    .admin-action-primary,
+    .admin-action-secondary {
       width: 100%;
     }
   }

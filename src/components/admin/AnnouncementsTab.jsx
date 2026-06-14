@@ -1,5 +1,8 @@
 import { useState, useEffect, Fragment } from 'react';
+import { TbCalendarEvent, TbCheck, TbAlertTriangle, TbInfoCircle } from 'react-icons/tb';
 import { supabase } from '../../supabaseClient';
+
+const CAL_MSG_ICON = { ok: TbCheck, error: TbAlertTriangle, info: TbInfoCircle };
 
 const TYPE_LABELS = {
   info: 'Información',
@@ -22,7 +25,79 @@ export default function AnnouncementsTab() {
 
   const [confirmingDelete, setConfirmingDelete] = useState(null);
 
+  // Comprobación del calendario EMT (festivos / huelgas)
+  const [calChecking, setCalChecking] = useState(false);
+  const [calMsg, setCalMsg] = useState('');
+  const [calMsgType, setCalMsgType] = useState('info'); // info | ok | error
+
   useEffect(() => { cargar(); }, []);
+
+  // ¿la fecha ISO es de hoy? (para no duplicar el aviso si se pulsa dos veces)
+  function esHoy(iso) {
+    const d = new Date(iso), n = new Date();
+    return d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth() && d.getDate() === n.getDate();
+  }
+
+  function etiquetaDia(d) {
+    if (d.dayType === 'LA') return 'día laborable';
+    if (d.dayType === 'SA') return 'sábado';
+    if (d.dayType === 'FE') return 'festivo en fin de semana';
+    return d.dayType || 'día normal';
+  }
+
+  // Mira el calendario de la EMT y, si toca (festivo entre semana o huelga),
+  // crea y publica el aviso directamente.
+  async function comprobarCalendario() {
+    setCalChecking(true);
+    setCalMsg('');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { setCalMsg('No autenticado'); setCalMsgType('error'); return; }
+
+      const res = await fetch('/api/emt-calendar', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setCalMsg(data.error || 'No se pudo consultar el calendario de la EMT.');
+        setCalMsgType('error');
+        return;
+      }
+
+      if (!data.shouldAnnounce) {
+        setCalMsg(`Hoy (${data.date}) es ${etiquetaDia(data)}: no hace falta ningún aviso.`);
+        setCalMsgType('info');
+        return;
+      }
+
+      // Evitar duplicar si ya hay un aviso activo de hoy con ese título
+      const yaExiste = items.some(i => i.active && i.title === data.suggestion.title && esHoy(i.created_at));
+      if (yaExiste) {
+        setCalMsg('Ya hay un aviso activo para hoy, no se ha duplicado.');
+        setCalMsgType('info');
+        return;
+      }
+
+      const crear = await fetch('/api/announcements', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...data.suggestion, active: true }),
+      });
+      const cd = await crear.json().catch(() => ({}));
+      if (!crear.ok) { setCalMsg(cd.error || 'Error creando el aviso.'); setCalMsgType('error'); return; }
+
+      setItems(prev => [cd.announcement, ...prev]);
+      setCalMsg(data.reason === 'strike'
+        ? 'Aviso de HUELGA creado y publicado.'
+        : 'Aviso de FESTIVO creado y publicado.');
+      setCalMsgType('ok');
+    } catch {
+      setCalMsg('Error de red consultando el calendario.');
+      setCalMsgType('error');
+    } finally {
+      setCalChecking(false);
+    }
+  }
 
   async function cargar() {
     setLoading(true);
@@ -126,11 +201,39 @@ export default function AnnouncementsTab() {
           Anuncios globales <span className="admin-count">({items.length})</span>
         </h2>
         {!showForm && (
-          <button className="admin-action-btn admin-action-primary" onClick={abrirCrear}>
-            + Nuevo anuncio
-          </button>
+          <div className="admin-header-actions">
+            <button
+              className="admin-action-secondary"
+              onClick={comprobarCalendario}
+              disabled={calChecking}
+            >
+              <TbCalendarEvent size={16} />
+              {calChecking ? 'Comprobando...' : 'Comprobar calendario EMT'}
+            </button>
+            <button className="admin-action-btn admin-action-primary" onClick={abrirCrear}>
+              + Nuevo anuncio
+            </button>
+          </div>
         )}
       </div>
+
+      {calMsg && (() => {
+        const CalIcon = CAL_MSG_ICON[calMsgType] || TbInfoCircle;
+        return (
+          <p
+            className="admin-cal-msg"
+            style={{
+              display: 'flex', alignItems: 'center', gap: '8px',
+              margin: '0 0 12px', padding: '8px 12px', borderRadius: '8px', fontSize: '0.9rem',
+              background: calMsgType === 'error' ? '#fde8e8' : calMsgType === 'ok' ? '#e6f7ec' : '#eef2f7',
+              color: calMsgType === 'error' ? '#9b1c1c' : calMsgType === 'ok' ? '#1c7c3e' : '#334155',
+            }}
+          >
+            <CalIcon size={16} style={{ flexShrink: 0 }} />
+            <span>{calMsg}</span>
+          </p>
+        );
+      })()}
 
       {showForm && (
         <div className="admin-form-card">
