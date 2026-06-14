@@ -50,6 +50,7 @@
   left: 0;
   width: 100vw;
   height: 100vh;
+  height: 100dvh; /* dvh: alto real visible en móvil (sin contar la barra del navegador) */
   background: rgba(0, 0, 0, 0.4);
   z-index: 1999;
   animation: fade-in 0.2s ease;
@@ -72,6 +73,7 @@
   left: -320px;
   width: 300px;
   height: calc(100vh - 24px);
+  height: calc(100dvh - 24px); /* dvh: cuenta la barra del navegador móvil → se puede scrollear hasta abajo */
   background: #fff;
   z-index: 2000;
   box-shadow: 4px 0 30px rgba(0, 0, 0, 0.1);
@@ -79,7 +81,9 @@
   display: flex;
   flex-direction: column;
   overflow-y: auto;
+  overscroll-behavior: contain; /* el scroll del sidebar no arrastra el mapa de detrás */
   border-radius: 0 20px 20px 0;
+  padding-bottom: env(safe-area-inset-bottom, 0px); /* deja sitio para la barra de inicio del móvil */
 
   &.sidebar-open {
     left: 0;
