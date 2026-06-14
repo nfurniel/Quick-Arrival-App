@@ -3,6 +3,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { getBusLocation } from '../../services/crtmService';
+import { getInterurbanBusRoute } from '../../services/routeGeometryService';
 import { liveBusIcon, trackingStopIcon } from './mapIcons';
 
 // Pedir ruta real por carretera usando OSRM (gratuito, sin API key)
@@ -22,7 +23,7 @@ async function fetchRoute(fromLat, fromLng, toLat, toLng) {
   return null;
 }
 
-// Componente que muestra el bus moviéndose en tiempo real con ruta
+// Componente que muestra el bus movinedose en tiempo real con ruta ezz
 export default function LiveBusLayer({ selectedBus, onStatusChange }) {
   const [busLocations, setBusLocations] = useState([]);
   const [routePath, setRoutePath] = useState([]);
@@ -49,7 +50,7 @@ export default function LiveBusLayer({ selectedBus, onStatusChange }) {
     let timeoutWarning;
     let montado = true;
 
-    // Si tras 10s no hay ubicación, avisar al usuario
+    // Si tras 10s no se encuentra la ubicacion , avisar al usuario
     timeoutWarning = setTimeout(() => {
       if (!hasLocation.current && montado) onStatusChange?.('timeout');
     }, 10000);
@@ -67,54 +68,81 @@ export default function LiveBusLayer({ selectedBus, onStatusChange }) {
         );
 
         if (ubicaciones && ubicaciones.length > 0 && montado) {
-          if (!hasLocation.current) {
-            hasLocation.current = true;
-            clearTimeout(timeoutWarning);
-            onStatusChange?.('found');
-          }
+          // El bus que vamos a mostrar (null = ninguno válido todavía)
+          let busParaRuta = null;
 
-          // Si hay varios buses en la misma línea, elegir el más cercano a la parada.
-          // Usamos Math.hypot que es como hacer pitagoras con la diferencia de lat y lng
-          let busParaRuta = ubicaciones[0];
-          if (ubicaciones.length > 1 && selectedBus.stopLat && selectedBus.stopLng) {
-            busParaRuta = ubicaciones.reduce((closest, loc) => {
-              const distLoc = Math.hypot(loc.latitude - selectedBus.stopLat, loc.longitude - selectedBus.stopLng);
-              const distClosest = Math.hypot(closest.latitude - selectedBus.stopLat, closest.longitude - selectedBus.stopLng);
-              return distLoc < distClosest ? loc : closest;
-            });
-            // Mostrar solo el bus más cercano para evitar confusión
-            setBusLocations([busParaRuta]);
-          } else {
-            setBusLocations(ubicaciones);
-          }
-
-          // Calcular ruta desde el bus hasta la parada
-          if (selectedBus.stopLat && selectedBus.stopLng) {
-            const ruta = await fetchRoute(
-              busParaRuta.latitude, busParaRuta.longitude,
-              selectedBus.stopLat, selectedBus.stopLng
-            );
-            if (ruta && montado) setRoutePath(ruta);
-          }
-
-          // Centrar el mapa para ver bus y parada la primera vez
-          if (!yaCentrado.current) {
-            yaCentrado.current = true;
-            if (selectedBus.stopLat && selectedBus.stopLng) {
-              const bounds = L.latLngBounds(
-                [ubicaciones[0].latitude, ubicaciones[0].longitude],
-                [selectedBus.stopLat, selectedBus.stopLng]
-              );
-              map.fitBounds(bounds.pad(0.3), { animate: true, duration: 1 });
+          if (String(selectedBus.codMode) === '8') {
+            // Interurbano: trazado REAL del CRTM. Solo seguimos el bus que VIENE
+            // a por ti (no el más cercano en línea recta ni uno que ya pasó la
+            // parada) y dibujamos el recorrido siguiendo la calle, sin OSRM.
+            const info = await getInterurbanBusRoute(selectedBus, ubicaciones);
+            if (!montado) return;
+            if (info.chosenBus) {
+              busParaRuta = info.chosenBus;
+              setBusLocations([busParaRuta]);
+              setRoutePath(info.routePath || []);
             } else {
-              map.setView([ubicaciones[0].latitude, ubicaciones[0].longitude], 15, { animate: true });
+              // Ningún bus viene hacia la parada (los que hay ya pasaron o el de
+              // tu tiempo aún no tiene GPS) → no mostramos un bus que ya se fue.
+              setBusLocations([]);
+              setRoutePath([]);
             }
+          } else {
+            // Urbano (EMT): comportamiento anterior con OSRM.
+            // Si hay varios buses en la línea, mostrar el más cercano a la parada.
+            if (ubicaciones.length > 1 && selectedBus.stopLat && selectedBus.stopLng) {
+              busParaRuta = ubicaciones.reduce((closest, loc) => {
+                const distLoc = Math.hypot(loc.latitude - selectedBus.stopLat, loc.longitude - selectedBus.stopLng);
+                const distClosest = Math.hypot(closest.latitude - selectedBus.stopLat, closest.longitude - selectedBus.stopLng);
+                return distLoc < distClosest ? loc : closest;
+              });
+              setBusLocations([busParaRuta]);
+            } else {
+              busParaRuta = ubicaciones[0];
+              setBusLocations(ubicaciones);
+            }
+
+            if (selectedBus.stopLat && selectedBus.stopLng) {
+              const ruta = await fetchRoute(
+                busParaRuta.latitude, busParaRuta.longitude,
+                selectedBus.stopLat, selectedBus.stopLng
+              );
+              if (ruta && montado) setRoutePath(ruta);
+            }
+          }
+
+          if (!montado) return;
+
+          if (busParaRuta) {
+            // Tenemos un bus que mostrar
+            if (!hasLocation.current) {
+              hasLocation.current = true;
+              clearTimeout(timeoutWarning);
+            }
+            onStatusChange?.('found');
+
+            // Centrar el mapa para ver bus y parada la primera vez
+            if (!yaCentrado.current) {
+              yaCentrado.current = true;
+              if (selectedBus.stopLat && selectedBus.stopLng) {
+                const bounds = L.latLngBounds(
+                  [busParaRuta.latitude, busParaRuta.longitude],
+                  [selectedBus.stopLat, selectedBus.stopLng]
+                );
+                map.fitBounds(bounds.pad(0.3), { animate: true, duration: 1 });
+              } else {
+                map.setView([busParaRuta.latitude, busParaRuta.longitude], 15, { animate: true });
+              }
+            }
+          } else {
+            // Ningún bus viene todavía → "aún sin localizar" (seguimos cada 8s)
+            onStatusChange?.('timeout');
           }
         }
       } catch (e) {
         console.error("Error obteniendo ubicacion del bus:", e);
       } finally {
-        // Usamos setTimeout recursivo en vez de setInterval para que no se solape
+        // Usamos setTimeout para que no se solape basicamente 
         // si una peticion tarda mas de 8s (el CRTM a veces se pone lento)
         if (montado) {
           timeoutId = setTimeout(pedirUbicacion, 8000);
