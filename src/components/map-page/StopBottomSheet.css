@@ -5,6 +5,7 @@
   right: 0;
   z-index: 1000;
   max-height: 78vh;
+  max-height: 78dvh; /* dvh: respeta el alto real visible del navegador en móvil */
   background: #ffffff;
   border-radius: 22px 22px 0 0;
   box-shadow: 0 -4px 32px rgba(0, 0, 0, 0.14);
@@ -20,6 +21,7 @@
     bottom: 24px;
     width: 340px;
     max-height: 70vh;
+    max-height: 70dvh;
     border-radius: 20px;
     transform: none !important;
     box-shadow: 0 8px 40px rgba(0, 0, 0, 0.18);
@@ -182,7 +184,9 @@
 .sheet-scroll-area {
   flex: 1;
   overflow-y: auto;
-  padding: 12px 20px 24px;
+  /* el padding inferior añade el safe-area para que el último bus / botón no
+     quede tapado por la barra de inicio del móvil */
+  padding: 12px 20px calc(24px + env(safe-area-inset-bottom, 0px));
   overscroll-behavior: contain;
   touch-action: pan-y;
 }
